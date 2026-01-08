@@ -1,0 +1,30 @@
+﻿// Copyright (c) 2026 SDSC0623. All rights reserved.
+// Licensed under the MIT license.
+// See LICENSE file in the project root for full license information.
+
+using System.ComponentModel;
+using System.Reflection;
+
+namespace AI_Interviewer.Helpers;
+
+public static class CommonHelper {
+    public static string GetEnumDescription(object enumObj) {
+        var type = enumObj.GetType();
+        if (!type.IsEnum) {
+            return enumObj.ToString() ?? string.Empty;
+        }
+
+        var enumStr = enumObj.ToString();
+        if (enumStr == null) {
+            return string.Empty;
+        }
+
+        var fi = type.GetField(enumStr);
+        if (fi == null) {
+            return enumStr;
+        }
+
+        var attributes = fi.GetCustomAttribute<DescriptionAttribute>(false);
+        return attributes?.Description ?? fi.Name;
+    }
+}

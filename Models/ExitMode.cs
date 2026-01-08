@@ -1,0 +1,13 @@
+﻿// Copyright (c) 2026 SDSC0623. All rights reserved.
+// Licensed under the MIT license.
+// See LICENSE file in the project root for full license information.
+
+using System.ComponentModel;
+
+namespace AI_Interviewer.Models;
+
+public enum ExitMode {
+    [Description("每次询问")] Ask,
+    [Description("退出")] Exit,
+    [Description("隐藏")] Hide
+}

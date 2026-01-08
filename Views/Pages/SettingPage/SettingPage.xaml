@@ -8,6 +8,7 @@
       xmlns:extensions="clr-namespace:AI_Interviewer.Extensions"
       xmlns:converters="clr-namespace:AI_Interviewer.Converters"
       xmlns:models="clr-namespace:AI_Interviewer.Models"
+      xmlns:controls="clr-namespace:AI_Interviewer.Controls"
       mc:Ignorable="d"
       d:DesignHeight="2550"
       d:DesignWidth="692"
@@ -93,6 +94,108 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
+                </Grid>
+            </ui:CardControl.Header>
+        </ui:CardControl>
+
+        <!-- 星火AI配置 -->
+        <ui:CardExpander Margin="0,0,0,12" Icon="{ui:SymbolIcon Wrench16}">
+            <ui:CardExpander.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:TextBlock Grid.Row="0"
+                                  Grid.Column="0"
+                                  FontTypography="Body"
+                                  Text="星火AI配置"
+                                  TextWrapping="Wrap" />
+                    <ui:TextBlock Grid.Row="1"
+                                  Grid.Column="0"
+                                  Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
+                                  Text="设置星火AI的API相关信息"
+                                  TextWrapping="Wrap" />
+                    <controls:TwoStateButton Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" Margin="20,0"
+                                             EnableIcon="{ui:SymbolIcon Edit24}"
+                                             EnableContent="开始编辑"
+                                             EnableCommand="{Binding StartEditCommand}"
+                                             DisableIcon="{ui:SymbolIcon EditOff24}"
+                                             DisableContent="锁定编辑"
+                                             DisableCommand="{Binding EndEditCommand}"
+                                             IsChecked="{Binding IsEditingSparkConfig, Mode=TwoWay}" />
+                </Grid>
+            </ui:CardExpander.Header>
+            <StackPanel>
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ui:TextBlock Grid.Row="0"
+                                  FontTypography="Body"
+                                  Text="APP_ID"
+                                  TextWrapping="Wrap" />
+                    <ui:TextBox Grid.Row="1" IsEnabled="{Binding IsEditingSparkConfig}"
+                                Text="{Binding AppId, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ui:TextBlock Grid.Row="0"
+                                  FontTypography="Body"
+                                  Text="API_Key"
+                                  TextWrapping="Wrap" />
+                    <ui:TextBox Grid.Row="1" IsEnabled="{Binding IsEditingSparkConfig}"
+                                Text="{Binding ApiKey, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ui:TextBlock Grid.Row="0"
+                                  FontTypography="Body"
+                                  Text="API_Secret"
+                                  TextWrapping="Wrap" />
+                    <ui:TextBox Grid.Row="1" IsEnabled="{Binding IsEditingSparkConfig}"
+                                Text="{Binding ApiSecret, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+            </StackPanel>
+        </ui:CardExpander>
+
+        <ui:CardControl Margin="0,0,0,12" Icon="{ui:SymbolIcon Camera24}">
+            <ui:CardControl.Header>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:TextBlock Grid.Row="0"
+                                  Grid.Column="0"
+                                  FontTypography="Body"
+                                  Text="摄像头目标帧率"
+                                  TextWrapping="Wrap" />
+                    <ui:TextBlock Grid.Row="1"
+                                  Grid.Column="0"
+                                  Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
+                                  Text="设置摄像头目标帧率，推荐且默认30帧。过高可能会导致卡顿，过低则效果不佳。"
+                                  TextWrapping="Wrap" />
+                    <ui:NumberBox Grid.Row="0" Grid.RowSpan="2" Grid.Column="1"
+                                Margin="0,0,36,0" PlaceholderText="输入帧率(fps)"
+                                TextAlignment="Center"
+                                MinWidth="120" Height="40" SpinButtonPlacementMode="Hidden" ClearButtonEnabled="False"
+                                Value="{Binding }"/>
                 </Grid>
             </ui:CardControl.Header>
         </ui:CardControl>

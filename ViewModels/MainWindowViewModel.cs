@@ -12,7 +12,7 @@ using Wpf.Ui.Appearance;
 namespace AI_Interviewer.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject {
-    public string Title => $"各种工具{(GlobalSettings.IsDebug ? " · Dev" : string.Empty)} {GlobalSettings.Version}";
+    public string Title => $"AI 面试官{(GlobalSettings.IsDebug ? " · Dev" : string.Empty)} {GlobalSettings.Version}";
 
     [ObservableProperty] private bool _isDark = true;
 

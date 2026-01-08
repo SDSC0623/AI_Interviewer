@@ -24,9 +24,13 @@
 ## 🛠️ 技术架构
 
 ### 技术栈
-- **前端**：tkinter/ttkbootstrap GUI + Flask Web界面
-- **后端**：Python + Flask + 星火大模型 + OpenCV + TensorFlow
-- **存储**：JSON文件 + 配置管理
+| 类别           | 技术                                                         |
+| :------------- | :----------------------------------------------------------- |
+| **UI框架**     | WPF UI                                                       |
+| **开发平台**   | .NET 8.0                                                     |
+| **架构模式**   | MVVM (也许并不是很标准)                                      |
+| **关键工具包** | CommunityToolkit.Mvvm                                        |
+| **依赖注入**   | Microsoft.Extensions.Hosting<br >Microsoft.Extensions.DependencyInjection |
 
 ### 核心模块
 - **多模态评测**：6大能力维度评估（专业知识25%、技能匹配20%、语言表达20%、逻辑思维15%、创新能力10%、适应能力10%）
@@ -49,23 +53,7 @@
 ## 🔧 快速开始
 
 ### 环境要求
-Python 3.8+、Windows 10/11、摄像头麦克风
-
-### 安装运行
-```bash
-# 安装依赖
-pip install -r requirements.txt
-
-# 配置API（编辑config.yaml）
-spark_ai:
-  APP_ID: "your_app_id"
-  API_KEY: "your_api_key"
-  API_SECRET: "your_api_secret"
-(目前用的是我们自己的api，可以从设置里修改)
-
-# 启动应用
-python main.py        
-```
+.NET 8.0、Windows 10/11、摄像头麦克风     
 
 ### 使用流程
 注册登录 → 上传简历 → 选择岗位 → 开始面试 → 获取报告
@@ -82,17 +70,6 @@ python main.py
 - **技术优化**：精度提升、速度优化、多语言、云端部署
 - **生态建设**：开放API、插件支持、企业方案、行业标准
 
-## 📄 项目结构
-
-```
-├── main.py / web_server.py    # 程序入口
-├── config.yaml               # 系统配置
-├── functions/                # 核心功能（评测、反馈、分析等）
-├── ui_pages/                 # 界面页面
-├── templates/                # 报告模板
-├── reports/                  # 生成报告
-└── user_data/                # 用户数据
-```
-
+---
 
 **让AI赋能面试，让求职更加智能！** 🎯

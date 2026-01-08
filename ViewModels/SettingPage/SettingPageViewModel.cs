@@ -30,6 +30,21 @@ public partial class SettingPageViewModel : ObservableObject {
     // 默认退出选项
     [ObservableProperty] private ExitMode _exitMode = ExitMode.Ask;
 
+    // 星火AI配置
+    [ObservableProperty] private bool _isEditingSparkConfig;
+
+    // AppId
+    [ObservableProperty] private string _appId = string.Empty;
+
+    // ApiKey
+    [ObservableProperty] private string _apiKey = string.Empty;
+
+    // ApiSecret
+    [ObservableProperty] private string _apiSecret = string.Empty;
+
+    // 目标摄像头帧率
+    [ObservableProperty] private double _cameraFps = 30;
+
     // 提示信息服务
     private readonly SnackbarServiceHelper _snackbarService;
 
@@ -51,6 +66,19 @@ public partial class SettingPageViewModel : ObservableObject {
     private void Init() {
         StartPageType = _preferencesService.Get("StartPage", typeof(Views.Pages.HomePage.HomePage))!;
         ExitMode = _preferencesService.Get("ExitMode", ExitMode.Ask);
+        AppId = _preferencesService.Get("SparkAI/AppId", string.Empty)!;
+        ApiKey = _preferencesService.Get("SparkAI/ApiKey", string.Empty)!;
+        ApiSecret = _preferencesService.Get("SparkAI/ApiSecret", string.Empty)!;
+        CameraFps = _preferencesService.Get("CameraFps", 30);
+    }
+
+    public async Task Dispose() {
+        await _preferencesService.Set("StartPage", StartPageType);
+        await _preferencesService.Set("ExitMode", ExitMode);
+        await _preferencesService.Set("SparkAI/AppId", AppId);
+        await _preferencesService.Set("SparkAI/ApiKey", ApiKey);
+        await _preferencesService.Set("SparkAI/ApiSecret", ApiSecret);
+        await _preferencesService.Set("CameraFps", CameraFps);
     }
 
     partial void OnStartPageTypeChanged(Type value) {
@@ -59,6 +87,35 @@ public partial class SettingPageViewModel : ObservableObject {
 
     partial void OnExitModeChanged(ExitMode value) {
         _preferencesService.Set("ExitMode", value);
+    }
+
+    [RelayCommand]
+    private void StartEdit() {
+        IsEditingSparkConfig = true;
+    }
+
+    [RelayCommand]
+    private void EndEdit() {
+        IsEditingSparkConfig = false;
+        _preferencesService.Set("SparkAI/AppId", AppId);
+        _preferencesService.Set("SparkAI/ApiKey", ApiKey);
+        _preferencesService.Set("SparkAI/ApiSecret", ApiSecret);
+    }
+
+    partial void OnAppIdChanged(string value) {
+        _preferencesService.Set("SparkAI/AppId", value);
+    }
+
+    partial void OnApiKeyChanged(string value) {
+        _preferencesService.Set("SparkAI/ApiKey", value);
+    }
+
+    partial void OnApiSecretChanged(string value) {
+        _preferencesService.Set("SparkAI/ApiSecret", value);
+    }
+
+    partial void OnCameraFpsChanged(double value) {
+        _preferencesService.Set("CameraFps", value);
     }
 
     private ObservableCollection<PageInfo> GetAvailblePages() {

@@ -9,6 +9,7 @@
                  xmlns:viewModels="clr-namespace:AI_Interviewer.ViewModels"
                  xmlns:homePage="clr-namespace:AI_Interviewer.Views.Pages.HomePage"
                  xmlns:settingPage="clr-namespace:AI_Interviewer.Views.Pages.SettingPage"
+                 xmlns:userInfoPage="clr-namespace:AI_Interviewer.Views.Pages.UserInfoPage"
                  ExtendsContentIntoTitleBar="True"
                  mc:Ignorable="d"
                  d:DesignHeight="2550"
@@ -66,6 +67,15 @@
                                        TargetPageType="{x:Type homePage:HomePage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="Home24" Filled="True" Height="20" Width="20" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
+                <!-- 个人信息设置页 -->
+                <ui:NavigationViewItem Content="个人信息设置"
+                                       NavigationCacheMode="Enabled"
+                                       TargetPageType="{x:Type userInfoPage:UserInfoPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="ContactCard24" Filled="True" Height="20" Width="20" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
 

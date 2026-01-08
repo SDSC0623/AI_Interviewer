@@ -12,9 +12,11 @@ using AI_Interviewer.ViewModels;
 using AI_Interviewer.ViewModels.AskBeforeExitDialog;
 using AI_Interviewer.ViewModels.HomePage;
 using AI_Interviewer.ViewModels.SettingPage;
+using AI_Interviewer.ViewModels.UserInfoPage;
 using AI_Interviewer.Views;
 using AI_Interviewer.Views.Pages.HomePage;
 using AI_Interviewer.Views.Pages.SettingPage;
+using AI_Interviewer.Views.Pages.UserInfoPage;
 using AI_Interviewer.Views.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -89,6 +91,9 @@ public partial class App : Application {
             // 设置页面
             services.AddSingleton<SettingPageViewModel>();
             services.AddSingleton<SettingPage>();
+            // 用户信息设置页面
+            services.AddSingleton<UserInfoPageViewModel>();
+            services.AddSingleton<UserInfoPage>();
 
             // 问询对话框
             services.AddTransient<AskBeforeExitViewModel>();

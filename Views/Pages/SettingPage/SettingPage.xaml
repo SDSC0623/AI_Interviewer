@@ -195,7 +195,7 @@
                                 Margin="0,0,36,0" PlaceholderText="输入帧率(fps)"
                                 TextAlignment="Center"
                                 MinWidth="120" Height="40" SpinButtonPlacementMode="Hidden" ClearButtonEnabled="False"
-                                Value="{Binding }"/>
+                                Value="{Binding CameraFps}"/>
                 </Grid>
             </ui:CardControl.Header>
         </ui:CardControl>

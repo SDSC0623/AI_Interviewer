@@ -45,7 +45,9 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
         string apiKey,
         string apiSecret,
         CancellationToken cancellationToken = default) {
-        if (IsRunning) return;
+        if (IsRunning) {
+            return;
+        }
 
         _appId = appId;
         _apiKey = apiKey;
@@ -74,7 +76,9 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
     }
 
     public async Task StopAsync() {
-        if (!IsRunning) return;
+        if (!IsRunning) {
+            return;
+        }
 
         _uiRequestedStop = true;
         IsRunning = false;
@@ -97,15 +101,18 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
     }
 
     public ValueTask PushAudioAsync(AudioDataAvailableEventArgs audio) {
-        if (!IsRunning || _audioChannel == null)
+        if (!IsRunning || _audioChannel == null) {
             return ValueTask.CompletedTask;
+        }
 
         _audioChannel.Writer.TryWrite(audio);
         return ValueTask.CompletedTask;
     }
 
     private async Task RestartSessionAsync() {
-        if (_uiRequestedStop) return;
+        if (_uiRequestedStop) {
+            return;
+        }
 
         await _sessionLock.WaitAsync();
         try {
@@ -135,8 +142,9 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
     }
 
     private async Task StopSessionAsync() {
-        if (_sessionCts == null)
+        if (_sessionCts == null) {
             return;
+        }
 
         try {
             await _sessionCts.CancelAsync();
@@ -150,8 +158,6 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
 
             if (_receiveLoopTask != null)
                 await _receiveLoopTask;
-        } catch {
-            // swallow session shutdown exceptions
         } finally {
             _ws?.Dispose();
             _ws = null;
@@ -164,12 +170,13 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
     private async Task SendLoopAsync() {
         try {
             while (await _audioChannel!.Reader.WaitToReadAsync(_serviceCts!.Token)) {
-                if (_uiRequestedStop) return;
+                if (_uiRequestedStop) {
+                    return;
+                }
 
                 while (_audioChannel.Reader.TryRead(out var audio)) {
                     if (DateTime.UtcNow - _sessionStartTime > _maxSession) {
-                        OnResult?.Invoke(this,
-                            new SpeechRecognitionResultEventArgs("", true));
+                        OnResult?.Invoke(this, new SpeechRecognitionResultEventArgs("", true));
 
                         await RestartSessionAsync();
                         break;
@@ -190,8 +197,7 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
         var buffer = new byte[8192];
 
         try {
-            while (!token.IsCancellationRequested &&
-                   ws.State == WebSocketState.Open) {
+            while (!token.IsCancellationRequested && ws.State == WebSocketState.Open) {
                 var result = await ws.ReceiveAsync(buffer, token);
 
                 if (result.MessageType == WebSocketMessageType.Close) {
@@ -202,8 +208,7 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
                     return;
                 }
 
-                HandleMessage(
-                    Encoding.UTF8.GetString(buffer, 0, result.Count));
+                HandleMessage(Encoding.UTF8.GetString(buffer, 0, result.Count));
             }
         } catch (OperationCanceledException) {
         } catch (Exception ex) {
@@ -214,8 +219,9 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
 
     private void HandleMessage(string json) {
         var resp = JsonConvert.DeserializeObject<SparkWsResponse>(json);
-        if (resp?.code != 0 || resp.data?.result == null)
+        if (resp?.code != 0 || resp.data?.result == null) {
             return;
+        }
 
         var result = resp.data.result;
         var text = ExtractText(resp);
@@ -230,16 +236,15 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
                 text, isFinal, null, result.sn, result.pgs, range));
 
         if (isFinal && IsMeaninglessFinal(text)) {
-            OnResult?.Invoke(this,
-                new SpeechRecognitionResultEventArgs("", true));
-
+            OnResult?.Invoke(this, new SpeechRecognitionResultEventArgs("", true));
             _ = RestartSessionAsync();
         }
     }
 
     private static bool IsMeaninglessFinal(string text) {
-        if (string.IsNullOrWhiteSpace(text))
+        if (string.IsNullOrWhiteSpace(text)) {
             return true;
+        }
 
         return text.Contains('。') ||
                text.Contains('？') ||
@@ -261,8 +266,9 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
 
     private async Task SendAudioFrameAsync(AudioDataAvailableEventArgs audio) {
         var ws = _ws;
-        if (ws is not { State: WebSocketState.Open })
+        if (ws is not { State: WebSocketState.Open }) {
             return;
+        }
 
         int status = _frameIndex == 0 ? 0 : 1;
         _frameIndex++;

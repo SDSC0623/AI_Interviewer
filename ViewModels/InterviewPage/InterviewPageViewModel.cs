@@ -248,7 +248,10 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     private async void AudioPushHandler(object? sender, AudioDataAvailableEventArgs e) {
         try {
-            ShowVolume(e.AudioData, e.BytesRecorded);
+            if (IsSpeeching) {
+                ShowVolume(e.AudioData, e.BytesRecorded);
+            }
+
             await _speechRecognitionService.PushAudioAsync(e);
         } catch (Exception ex) {
             _logger.Error("错误: {ExMessage}", ex.Message);

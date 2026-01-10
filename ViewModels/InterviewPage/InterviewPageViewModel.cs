@@ -320,9 +320,10 @@ public partial class InterviewPageViewModel : ObservableObject {
         }
 
         IsSpeeching = false;
-        MicrophoneVolume = 0;
 
         _audioRecorderService.StopRecording();
+
+        MicrophoneVolume = 0;
     }
 
     [RelayCommand]

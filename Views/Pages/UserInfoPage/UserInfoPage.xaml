@@ -95,10 +95,8 @@
                                                   FontSize="12"
                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                   Margin="0,0,0,4" />
-                                    <ui:TextBox
-                                        Text="{Binding Resume.BasicInfo.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                        PlaceholderText="请输入您的姓名"
-                                        FontSize="14" />
+                                    <ui:TextBox FontSize="14" PlaceholderText="请输入您的姓名"
+                                                Text="{Binding Resume.BasicInfo.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <!-- 年龄 -->

@@ -10,6 +10,7 @@
                  xmlns:homePage="clr-namespace:AI_Interviewer.Views.Pages.HomePage"
                  xmlns:settingPage="clr-namespace:AI_Interviewer.Views.Pages.SettingPage"
                  xmlns:userInfoPage="clr-namespace:AI_Interviewer.Views.Pages.UserInfoPage"
+                 xmlns:interviewPage="clr-namespace:AI_Interviewer.Views.Pages.InterviewPage"
                  ExtendsContentIntoTitleBar="True"
                  mc:Ignorable="d"
                  d:DesignHeight="2550"
@@ -76,6 +77,15 @@
                                        TargetPageType="{x:Type userInfoPage:UserInfoPage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="ContactCard24" Filled="True" Height="20" Width="20" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
+                <!-- 模拟面试页 -->
+                <ui:NavigationViewItem Content="模拟面试"
+                                       NavigationCacheMode="Enabled"
+                                       TargetPageType="{x:Type interviewPage:InterviewPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="ClipboardBulletListLtr20" Filled="True" Height="20" Width="20" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
 

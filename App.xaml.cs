@@ -11,10 +11,12 @@ using AI_Interviewer.Services.IServices;
 using AI_Interviewer.ViewModels;
 using AI_Interviewer.ViewModels.AskBeforeExitDialog;
 using AI_Interviewer.ViewModels.HomePage;
+using AI_Interviewer.ViewModels.InterviewPage;
 using AI_Interviewer.ViewModels.SettingPage;
 using AI_Interviewer.ViewModels.UserInfoPage;
 using AI_Interviewer.Views;
 using AI_Interviewer.Views.Pages.HomePage;
+using AI_Interviewer.Views.Pages.InterviewPage;
 using AI_Interviewer.Views.Pages.SettingPage;
 using AI_Interviewer.Views.Pages.UserInfoPage;
 using AI_Interviewer.Views.Windows;
@@ -74,6 +76,8 @@ public partial class App : Application {
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<IContentDialogService, ContentDialogService>();
             services.AddSingleton<IPreferencesService, JsonPreferencesService>();
+            services.AddTransient<IAudioRecorderService, AudioRecorderService>();
+            services.AddTransient<ISpeechRecognitionService, SpeechRecognitionService>();
 
             // 特殊服务
             services.AddSingleton<SnackbarServiceHelper>(); // 弹窗服务
@@ -94,6 +98,9 @@ public partial class App : Application {
             // 用户信息设置页面
             services.AddSingleton<UserInfoPageViewModel>();
             services.AddSingleton<UserInfoPage>();
+            // 面试页面
+            services.AddSingleton<InterviewPageViewModel>();
+            services.AddSingleton<InterviewPage>();
 
             // 问询对话框
             services.AddTransient<AskBeforeExitViewModel>();

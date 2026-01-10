@@ -30,3 +30,22 @@ public class BooleanToVisibilityConverter : IValueConverter {
         throw new UnexpectedCallException();
     }
 }
+
+// bool取反转换器
+public class BoolInverseConverter : IValueConverter {
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) {
+        if (value is bool boolValue) {
+            return !boolValue;
+        }
+
+        return false;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) {
+        if (value is bool boolValue) {
+            return !boolValue;
+        }
+
+        return false;
+    }
+}

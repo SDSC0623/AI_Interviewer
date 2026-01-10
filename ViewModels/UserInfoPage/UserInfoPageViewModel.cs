@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 // See LICENSE file in the project root for full license information.
 
+using AI_Interviewer.Helpers;
 using AI_Interviewer.Models;
 using AI_Interviewer.Services.IServices;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -25,12 +26,15 @@ public partial class UserInfoPageViewModel : ObservableObject {
     // Logger
     private readonly ILogger _logger;
 
-    public UserInfoPageViewModel(IPreferencesService preferencesService, ILogger logger) {
+    // 提示信息服务
+    private readonly SnackbarServiceHelper _snackbarService;
+
+    public UserInfoPageViewModel(IPreferencesService preferencesService, ILogger logger, SnackbarServiceHelper snackbarService) {
         _preferencesService = preferencesService;
         _logger = logger;
+        _snackbarService = snackbarService;
         Resume = _preferencesService.Get("UserResume", new Resume())!;
-        Resume.PropertyChanged += (_, e) => {
-            _logger.Debug("{E} 改变", e.PropertyName);
+        Resume.PropertyChanged += (_, _) => {
             OnPropertyChanged(nameof(NoEducations));
             OnPropertyChanged(nameof(NoWorkExperiences));
         };
@@ -44,6 +48,7 @@ public partial class UserInfoPageViewModel : ObservableObject {
     private async Task SaveResume() {
         try {
             await _preferencesService.Set("UserResume", Resume);
+            _snackbarService.ShowSuccess("保存成功", "简历保存成功");
         } catch (Exception e) {
             _logger.Error("保存失败: {ExMessage}", e.Message);
         }

@@ -9,6 +9,7 @@
       xmlns:extensions="clr-namespace:AI_Interviewer.Extensions"
       xmlns:models="clr-namespace:AI_Interviewer.Models"
       xmlns:controls="clr-namespace:AI_Interviewer.Controls"
+      MaxHeight="2200"
       mc:Ignorable="d"
       d:DesignHeight="1800"
       d:DesignWidth="1000"
@@ -90,7 +91,7 @@
                                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                                                BorderThickness="1"
                                                Background="{DynamicResource LayerOnAcrylicFillColorDefaultBrush}"
-                                               Height="180"
+                                               Height="300" MaxWidth="533"
                                                Margin="0,0,0,12">
                                         <Grid>
                                             <!-- 摄像头视频预览 -->
@@ -98,31 +99,55 @@
                                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
                                                 <!-- 摄像头视频控件可以放在这里 -->
                                                 <Image Source="{Binding CameraPicture}"
-                                                       Stretch="Uniform"
-                                                       MaxHeight="200"
+                                                       Stretch="Uniform" Height="300"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center" />
                                             </ui:Border>
+
+                                            <!-- 无摄像头提示 -->
+                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        Margin="40"
+                                                        Visibility="{Binding IsCameraActive, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=True}">
+                                                <ui:SymbolIcon Symbol="VideoOff24" FontSize="48" Margin="0,0,0,12" />
+                                                <ui:TextBlock Text="摄像头未连接" FontSize="16" />
+                                            </StackPanel>
                                         </Grid>
                                     </ui:Border>
 
                                     <!-- 摄像头测试按钮 -->
-                                    <StackPanel Orientation="Horizontal">
-                                        <ui:Button
-                                            Content="开始摄像头测试"
-                                            Padding="12,8"
-                                            Appearance="Primary"
-                                            Command="{Binding TestCameraCommand}"
-                                            FontSize="13" Icon="{ui:SymbolIcon Video24}"
-                                            Margin="0,0,12,0" />
-
-                                        <ui:Button
-                                            Content="停止测试"
-                                            Padding="12,8"
-                                            Appearance="Secondary"
-                                            Command="{Binding StopCameraTestCommand}"
-                                            FontSize="13" Icon="{ui:SymbolIcon Stop24}" />
-                                    </StackPanel>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="10" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="10" />
+                                        </Grid.ColumnDefinitions>
+                                        <controls:TwoStateButton Grid.Row="0" Grid.Column="0"
+                                                                 Padding="12,8" Appearance="Primary"
+                                                                 IsChecked="{Binding IsTestingCamera}"
+                                                                 EnableContent="开始测试"
+                                                                 EnableIcon="{ui:SymbolIcon Video24}"
+                                                                 EnableCommand="{Binding StartCameraTestCommand}"
+                                                                 DisableContent="停止测试"
+                                                                 DisableIcon="{ui:SymbolIcon Stop24}"
+                                                                 DisableCommand="{Binding StopCameraTestCommand}" />
+                                        <ComboBox Grid.Row="0" Grid.Column="2"
+                                                  ItemsSource="{Binding CameraDevices}"
+                                                  SelectedItem="{Binding SelectedCamera}"
+                                                  DisplayMemberPath="Name" />
+                                        <ui:Button Grid.Row="0" Grid.Column="4"
+                                                   Command="{Binding RefreshCameraDevicesCommand}"
+                                                   Icon="{ui:SymbolIcon ArrowSync24, FontSize=22, Filled=True}" />
+                                        <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="6"
+                                                  Content="屏幕翻转" IsChecked="{Binding NeedMirrorHorizontal}" />
+                                    </Grid>
                                 </StackPanel>
 
                                 <!-- 麦克风测试区域 -->
@@ -157,7 +182,8 @@
                                                   SelectedItem="{Binding SelectedMicrophone}"
                                                   DisplayMemberPath="Name"
                                                   Margin="0,0,12,0" />
-                                        <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon ArrowSyncCircle24}"
+                                        <ui:Button Grid.Column="1"
+                                                   Icon="{ui:SymbolIcon ArrowSync24, FontSize=22, Filled=True}"
                                                    Command="{Binding RefreshMicrophoneDevicesCommand}" />
                                     </Grid>
 
@@ -775,7 +801,7 @@
 
                                     <!-- 回答内容 -->
                                     <ui:TextBox Grid.Row="1"
-                                                Text="{Binding CurrentAnswer, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                Text="{Binding CurrentQuestionAnswer, UpdateSourceTrigger=PropertyChanged}"
                                                 FontSize="14" TextWrapping="Wrap" AcceptsReturn="True"
                                                 MinHeight="120" VerticalScrollBarVisibility="Auto"
                                                 PlaceholderText="您的回答..." />
@@ -828,36 +854,30 @@
                                 </ui:Border>
 
                                 <!-- 视频预览区域 -->
-                                <Border Grid.Row="1" Margin="20,20,20,10"
-                                        CornerRadius="8"
-                                        Background="#0D1A2D"
-                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                        BorderThickness="1">
+                                <ui:Border Grid.Row="1" Margin="20,20,20,10"
+                                           CornerRadius="8" Background="#0D1A2D"
+                                           Height="200" MaxWidth="355"
+                                           BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                           BorderThickness="1">
                                     <Grid>
                                         <!-- 摄像头视频显示 -->
-                                        <Border CornerRadius="6" Background="Transparent">
+                                        <ui:Border CornerRadius="6" Background="Transparent">
                                             <!-- 这里可以绑定实际的摄像头视频流 -->
                                             <Image Source="{Binding CameraPicture}"
                                                    Stretch="Uniform"
-                                                   MaxHeight="200"
+                                                   Height="200"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center" />
-                                        </Border>
+                                        </ui:Border>
 
                                         <!-- 无摄像头提示 -->
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                    Margin="40"
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40"
                                                     Visibility="{Binding IsCameraActive, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=True}">
-                                            <ui:SymbolIcon Symbol="VideoOff24"
-                                                           FontSize="48"
-                                                           Foreground="#666666"
-                                                           Margin="0,0,0,12" />
-                                            <ui:TextBlock Text="摄像头未连接"
-                                                          FontSize="16"
-                                                          Foreground="#999999" />
+                                            <ui:SymbolIcon Symbol="VideoOff24" FontSize="48" Margin="0,0,0,12" />
+                                            <ui:TextBlock Text="摄像头未连接" FontSize="16" />
                                         </StackPanel>
                                     </Grid>
-                                </Border>
+                                </ui:Border>
 
                                 <!-- 面部分析信息 -->
                                 <ui:Border Grid.Row="2" CornerRadius="8"
@@ -867,44 +887,26 @@
                                     <StackPanel>
                                         <!-- 表情分析 -->
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                            <ui:TextBlock Text="表情："
-                                                          FontTypography="Caption"
-                                                          FontSize="12"
-                                                          Foreground="White"
-                                                          Width="60" />
-                                            <ui:TextBlock Text="{Binding FacialExpression}"
-                                                          FontTypography="Caption"
-                                                          FontSize="12"
-                                                          Foreground="White"
-                                                          FontWeight="SemiBold" />
+                                            <ui:TextBlock Text="表情：" FontTypography="Caption" Width="60" />
+                                            <ui:TextBlock
+                                                Text="{Binding FacialEmotion, Converter={StaticResource EnumDescriptionConverter}}"
+                                                FontTypography="Caption" />
                                         </StackPanel>
 
                                         <!-- 头部姿态 -->
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                            <ui:TextBlock Text="头部姿态："
-                                                          FontTypography="Caption"
-                                                          FontSize="12"
-                                                          Foreground="White"
-                                                          Width="60" />
-                                            <ui:TextBlock Text="{Binding HeadPose}"
-                                                          FontTypography="Caption"
-                                                          FontSize="12"
-                                                          Foreground="White"
-                                                          FontWeight="SemiBold" />
+                                            <ui:TextBlock Text="头部姿态：" FontTypography="Caption" Width="60" />
+                                            <ui:TextBlock
+                                                Text="{Binding HeadPose, Converter={StaticResource EnumDescriptionConverter}}"
+                                                FontTypography="Caption" />
                                         </StackPanel>
 
                                         <!-- 视线方向 -->
                                         <StackPanel Orientation="Horizontal">
-                                            <ui:TextBlock Text="视线方向："
-                                                          FontTypography="Caption"
-                                                          FontSize="12"
-                                                          Foreground="White"
-                                                          Width="60" />
-                                            <ui:TextBlock Text="{Binding GazeDirection}"
-                                                          FontTypography="Caption"
-                                                          FontSize="12"
-                                                          Foreground="White"
-                                                          FontWeight="SemiBold" />
+                                            <ui:TextBlock Text="视线方向：" FontTypography="Caption" Width="60" />
+                                            <ui:TextBlock
+                                                Text="{Binding GazeDirection, Converter={StaticResource EnumDescriptionConverter}}"
+                                                FontTypography="Caption" />
                                         </StackPanel>
                                     </StackPanel>
                                 </ui:Border>
@@ -912,12 +914,10 @@
                         </ui:Border>
 
                         <!-- 语音识别卡片 -->
-                        <ui:Border Grid.Row="2"
-                                   CornerRadius="12"
+                        <ui:Border Grid.Row="2" CornerRadius="12"
                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                   BorderBrush="#FF9800"
-                                   BorderThickness="2"
-                                   Padding="25">
+                                   BorderBrush="#FF9800" BorderThickness="2" Padding="25"
+                                   MaxHeight="1000">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -938,7 +938,7 @@
                                 </StackPanel>
 
                                 <!-- 语音识别控制按钮 -->
-                                <Grid Grid.Row="1" Margin="0,0,0,20">
+                                <Grid Grid.Row="1" Margin="0,0,0,12">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
@@ -948,11 +948,12 @@
                                         <ColumnDefinition Width="12" />
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="12" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <controls:TwoStateButton Grid.Row="0" Grid.Column="0"
-                                                             FontSize="14" Appearance="Success"
-                                                             Padding="16,10"
+                                                             Appearance="Primary" Padding="12,10"
                                                              IsChecked="{Binding IsSpeeching}"
                                                              EnableContent="开始识别"
                                                              EnableIcon="{ui:SymbolIcon Mic16}"
@@ -960,23 +961,27 @@
                                                              DisableContent="停止识别"
                                                              DisableIcon="{ui:SymbolIcon MicOff16}"
                                                              DisableCommand="{Binding StopSpeechRecognitionCommand}" />
-
                                     <ui:Button Grid.Row="0" Grid.Column="2"
+                                               Content="填入"
+                                               IsEnabled="{Binding IsSpeeching, Converter={StaticResource BoolInverseConverter}}"
+                                               Padding="12,10" FontSize="14"
+                                               Appearance="Success" Icon="{ui:SymbolIcon ArrowLeft24}"
+                                               Command="{Binding AddSpeechAnswerCommand}" />
+                                    <ui:Button Grid.Row="0" Grid.Column="4"
                                                Content="清空"
-                                               Padding="16,10" FontSize="14"
+                                               Padding="12,10" FontSize="14"
                                                Appearance="Secondary" Icon="{ui:SymbolIcon Delete24}"
                                                Command="{Binding ClearSpeechRecognitionCommand}" />
-                                    <ProgressBar Grid.Row="0" Grid.Column="4" VerticalAlignment="Center"
+                                    <ProgressBar Grid.Row="0" Grid.Column="6" VerticalAlignment="Center"
                                                  Height="16" Minimum="0" Maximum="1"
                                                  Value="{Binding MicrophoneVolume}" />
-
-                                    <ui:TextBlock Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="1" Margin="0,8,0,0"
+                                    <ui:TextBlock Grid.Column="0" Grid.ColumnSpan="7" Grid.Row="1" Margin="0,8,0,0"
                                                   Text="如果音量条有跳动但无识别内容，可检查设置内的日志信息。若无报错信息，则为星火AI服务异常。"
                                                   TextWrapping="Wrap" />
                                 </Grid>
 
                                 <!-- 识别结果显示 -->
-                                <Grid Grid.Row="2" MaxHeight="300">
+                                <Grid Grid.Row="2">
                                     <ui:DynamicScrollViewer>
                                         <ui:TextBlock Text="{Binding SpeechRecognitionResult}"
                                                       FontTypography="Body"
@@ -985,24 +990,25 @@
                                                       Background="{DynamicResource LayerOnAcrylicFillColorDefaultBrush}" />
                                     </ui:DynamicScrollViewer>
                                 </Grid>
-                                <Grid Grid.Row="3" Margin="0,12,0,0">
+
+                                <!--<Grid Grid.Row="3" Margin="0,12,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- 情绪标签 -->
+                                    ~1~ 情绪标签 @1@
                                     <ui:TextBlock Grid.Column="0"
                                                   Text="情绪："
                                                   FontTypography="BodyStrong"
                                                   FontSize="14" />
 
-                                    <!-- 情绪值显示 -->
+                                    ~1~ 情绪值显示 @1@
                                     <ui:TextBlock Grid.Column="1"
                                                   Text="{Binding VoiceEmotion}"
                                                   FontTypography="Body"
                                                   FontSize="14" />
-                                </Grid>
+                                </Grid>-->
                             </Grid>
                         </ui:Border>
                     </Grid>

@@ -69,16 +69,16 @@ public partial class SettingPageViewModel : ObservableObject {
         AppId = _preferencesService.Get("SparkAI/AppId", string.Empty)!;
         ApiKey = _preferencesService.Get("SparkAI/ApiKey", string.Empty)!;
         ApiSecret = _preferencesService.Get("SparkAI/ApiSecret", string.Empty)!;
-        CameraFps = _preferencesService.Get("CameraFps", 30);
+        CameraFps = _preferencesService.Get("CameraFps", 30.0);
     }
 
-    public async Task Dispose() {
-        await _preferencesService.Set("StartPage", StartPageType);
-        await _preferencesService.Set("ExitMode", ExitMode);
-        await _preferencesService.Set("SparkAI/AppId", AppId);
-        await _preferencesService.Set("SparkAI/ApiKey", ApiKey);
-        await _preferencesService.Set("SparkAI/ApiSecret", ApiSecret);
-        await _preferencesService.Set("CameraFps", CameraFps);
+    public void Dispose() {
+        _preferencesService.Set("StartPage", StartPageType);
+        _preferencesService.Set("ExitMode", ExitMode);
+        _preferencesService.Set("SparkAI/AppId", AppId);
+        _preferencesService.Set("SparkAI/ApiKey", ApiKey);
+        _preferencesService.Set("SparkAI/ApiSecret", ApiSecret);
+        _preferencesService.Set("CameraFps", CameraFps);
     }
 
     partial void OnStartPageTypeChanged(Type value) {

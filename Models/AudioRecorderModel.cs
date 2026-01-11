@@ -15,12 +15,6 @@ public class AudioDataAvailableEventArgs(byte[] audioData, int bytesRecorded, bo
     public bool IsFinal { get; } = isFinal;
 }
 
-// 错误事件参数
-public class RecordingErrorEventArgs(Exception exception, string operation) : EventArgs {
-    public Exception Exception { get; } = exception;
-    public string Operation { get; } = operation; // 出错的操作
-}
-
 public class AudioFormat {
     public int SampleRate { get; set; } = 16000; // 16000 Hz
     public int BitsPerSample { get; set; } = 16; // 16-bit

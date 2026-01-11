@@ -26,6 +26,8 @@ public static class GlobalSettings {
 
     public static string AppDataDirectory => Path.Combine(BaseDirectory, "AppData");
 
+    public static string TempDirectory => Path.Combine(BaseDirectory, "Temp");
+
     public static bool IsAdmin { get; } = GetAdmin();
 
     private static bool GetAdmin() {

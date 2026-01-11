@@ -27,4 +27,19 @@ public static class CommonHelper {
         var attributes = fi.GetCustomAttribute<DescriptionAttribute>(false);
         return attributes?.Description ?? fi.Name;
     }
+
+    public static double CalculateRms(byte[] buffer, int bytesRecorded) {
+        var samples = bytesRecorded / 2;
+        if (samples == 0) return 0;
+
+        double sum = 0;
+
+        for (int i = 0; i < bytesRecorded; i += 2) {
+            short sample = BitConverter.ToInt16(buffer, i);
+            double normalized = sample / 32768.0;
+            sum += normalized * normalized;
+        }
+
+        return Math.Sqrt(sum / samples);
+    }
 }

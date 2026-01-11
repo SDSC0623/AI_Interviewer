@@ -12,10 +12,17 @@
 
     <ItemGroup>
       <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+      <PackageReference Include="DirectShowLib" Version="1.0.0" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1" />
       <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.1" />
+      <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
       <PackageReference Include="NAudio" Version="2.2.1" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+      <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+      <PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
+      <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" />
+      <PackageReference Include="OpenCvSharp4.Windows" Version="4.11.0.20250507" />
+      <PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.11.0.20250507" />
       <PackageReference Include="Serilog" Version="4.3.0" />
       <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
       <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
@@ -45,6 +52,15 @@
     <ItemGroup>
       <None Remove="Assets\Icons\icon.png" />
       <Resource Include="Assets\Icons\icon.png" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Resources\OpenCV\haarcascades\haarcascade_frontalface_default.xml" />
+      <EmbeddedResource Include="Resources\OpenCV\haarcascades\haarcascade_frontalface_default.xml" />
+      <None Remove="Resources\Models\emotion.onnx" />
+      <EmbeddedResource Include="Resources\Models\emotion.onnx" />
+      <None Remove="Resources\OpenCV\haarcascades\haarcascade_eye.xml" />
+      <EmbeddedResource Include="Resources\OpenCV\haarcascades\haarcascade_eye.xml" />
     </ItemGroup>
 
 </Project>

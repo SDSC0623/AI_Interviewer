@@ -2,6 +2,7 @@
 using AI_Interviewer.Models;
 using AI_Interviewer.Services.IServices;
 using NAudio.Wave;
+using ErrorEventArgs = AI_Interviewer.Models.ErrorEventArgs;
 
 namespace AI_Interviewer.Services;
 
@@ -20,7 +21,7 @@ public class AudioRecorderService : IAudioRecorderService {
     public RecorderConfiguration Configuration { get; private set; } = new();
 
     public event EventHandler<AudioDataAvailableEventArgs>? OnDataAvailable;
-    public event EventHandler<RecordingErrorEventArgs>? OnError;
+    public event EventHandler<ErrorEventArgs>? OnError;
 
     public void Initialize(RecorderConfiguration config) {
         if (_initialized) {
@@ -172,22 +173,30 @@ public class AudioRecorderService : IAudioRecorderService {
             RaiseError(e.Exception, "RecordingStopped");
         }
 
-        // 通知最终数据
-        OnDataAvailable?.Invoke(this,
-            new AudioDataAvailableEventArgs([], 0, isFinal: true));
-
-        Cleanup();
+        OnDataAvailable?.Invoke(this, new AudioDataAvailableEventArgs([], 0, isFinal: true));
     }
 
     private void RaiseError(Exception ex, string operation) {
-        OnError?.Invoke(this, new RecordingErrorEventArgs(ex, operation));
+        OnError?.Invoke(this, new ErrorEventArgs(ex, operation));
     }
 
     private void Cleanup() {
-        _writer?.Dispose();
-        _writer = null;
-        _waveIn?.Dispose();
-        _waveIn = null;
+        try {
+            _writer?.Dispose();
+        } catch {
+            /* 忽略 */
+        } finally {
+            _writer = null;
+        }
+
+        try {
+            _waveIn?.Dispose();
+        } catch {
+            /* 忽略 */
+        } finally {
+            _waveIn = null;
+        }
+
         _bufferedProvider = null;
     }
 

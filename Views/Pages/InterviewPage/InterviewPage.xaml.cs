@@ -18,7 +18,7 @@ public partial class InterviewPage : Page {
         DataContext = viewModel;
     }
 
-    public async Task Dispose() {
-        await (DataContext as InterviewPageViewModel)!.Dispose();
+    public void Dispose() {
+        (DataContext as InterviewPageViewModel)!.Dispose();
     }
 }

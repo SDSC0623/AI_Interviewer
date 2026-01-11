@@ -9,6 +9,7 @@ using AI_Interviewer.ViewModels.SettingPage;
 using Serilog.Sinks.RichTextBox.Abstraction;
 
 namespace AI_Interviewer.Views.Pages.SettingPage;
+
 [NeedStartupInit]
 [NeedDisposePage(nameof(Dispose))]
 public partial class SettingPage : Page {
@@ -28,7 +29,7 @@ public partial class SettingPage : Page {
         LogTextBox.ScrollToEnd();
     }
 
-    public async Task Dispose() {
-        await (DataContext as SettingPageViewModel)!.Dispose();
+    public void Dispose() {
+        (DataContext as SettingPageViewModel)!.Dispose();
     }
 }

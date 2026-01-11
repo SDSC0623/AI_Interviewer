@@ -78,6 +78,9 @@ public partial class App : Application {
             services.AddSingleton<IPreferencesService, JsonPreferencesService>();
             services.AddTransient<IAudioRecorderService, AudioRecorderService>();
             services.AddTransient<ISpeechRecognitionService, SpeechRecognitionService>();
+            services.AddSingleton<IInterviewAnswerSaveService, InterviewAnswerSaveService>();
+            services.AddTransient<ICameraRecorderService, CameraRecorderService>();
+            services.AddTransient<IEmotionAnalysisService, EmotionAnalysisService>();
 
             // 特殊服务
             services.AddSingleton<SnackbarServiceHelper>(); // 弹窗服务

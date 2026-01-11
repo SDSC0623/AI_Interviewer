@@ -6,13 +6,18 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Text;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using AI_Interviewer.Helpers;
 using AI_Interviewer.Models;
 using AI_Interviewer.Services.IServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using NAudio.Wave;
 using Serilog;
+using Wpf.Ui.Controls;
+using ErrorEventArgs = AI_Interviewer.Models.ErrorEventArgs;
+using MessageBox = Wpf.Ui.Controls.MessageBox;
+using MessageBoxResult = Wpf.Ui.Controls.MessageBoxResult;
 
 namespace AI_Interviewer.ViewModels.InterviewPage;
 
@@ -26,20 +31,33 @@ public partial class InterviewPageViewModel : ObservableObject {
     // 提示信息服务
     private readonly SnackbarServiceHelper _snackbarService;
 
+    // 摄像头录制服务
+    private readonly ICameraRecorderService _cameraRecorderService;
+
+    // 面部分析服务
+    private readonly IEmotionAnalysisService _emotionAnalysisService;
+
     // 音频录制服务
     private readonly IAudioRecorderService _audioRecorderService;
 
     // 语音识别服务
     private readonly ISpeechRecognitionService _speechRecognitionService;
 
+    // 面试回答保存服务
+    private readonly IInterviewAnswerSaveService _interviewAnswerSaveService;
+
     public InterviewPageViewModel(IPreferencesService preferencesService, ILogger logger,
         SnackbarServiceHelper snackbarService, IAudioRecorderService audioRecorderService,
-        ISpeechRecognitionService speechRecognitionService) {
+        ISpeechRecognitionService speechRecognitionService, IInterviewAnswerSaveService interviewAnswerSaveService,
+        ICameraRecorderService cameraRecorderService, IEmotionAnalysisService emotionAnalysisService) {
         _preferencesService = preferencesService;
         _logger = logger;
         _snackbarService = snackbarService;
         _audioRecorderService = audioRecorderService;
         _speechRecognitionService = speechRecognitionService;
+        _interviewAnswerSaveService = interviewAnswerSaveService;
+        _cameraRecorderService = cameraRecorderService;
+        _emotionAnalysisService = emotionAnalysisService;
         Init();
         CustomQuestions.ListChanged += (_, _) => {
             OnPropertyChanged(nameof(HasCustomQuestions));
@@ -53,34 +71,64 @@ public partial class InterviewPageViewModel : ObservableObject {
         };
     }
 
-    public async Task Dispose() {
-        await Save();
-        _audioRecorderService.Dispose();
-        InterviewDispose();
+    private void Save() {
+        _preferencesService.Set("CustomInterviewQuestions", CustomQuestions);
     }
 
-    private async Task Save() {
-        await _preferencesService.Set("CustomInterviewQuestions", CustomQuestions);
+    private void AudioRecorderErrorHandler(object? sender, ErrorEventArgs e) {
+        _snackbarService.ShowError("音频录制错误，建议重新启动软件", $"{e.Operation} 发生错误: {e.Exception.Message}");
+        _logger.Error("音频录制错误, {e.Operation} 发生错误: {ExMessage}", e.Operation, e.Exception.Message);
+    }
+
+    private void CameraRecorderErrorHandler(object? sender, ErrorEventArgs e) {
+        App.Current.Dispatcher.Invoke(() => {
+            _snackbarService.ShowError("摄像头错误", $"{e.Operation} 发生错误: {e.Exception.Message}");
+            _logger.Error("摄像头错误, {e.Operation} 发生错误: {ExMessage}", e.Operation, e.Exception.Message);
+        });
+    }
+
+    private void SpeechRecognitionError(object? sender, ErrorEventArgs e) {
+        _snackbarService.ShowError($"语音识别 {e.Operation} 错误", $"错误信息: {e.Exception.Message}");
+        _logger.Error("语音识别 {Op} 错误: {Message}", e.Operation, e.Exception.Message);
+    }
+
+    private void EmotionAnalysisErrorHandler(object? sender, ErrorEventArgs e) {
+        App.Current.Dispatcher.Invoke(() => {
+            _snackbarService.ShowError("面部分析错误", $"{e.Operation} 发生错误: {e.Exception.Message}");
+            _logger.Error("面部分析错误, {e.Operation} 发生错误: {ExMessage}", e.Operation, e.Exception.Message);
+        });
     }
 
     private void Init() {
         try {
-            CustomQuestions =
-                _preferencesService.Get("CustomInterviewQuestions", new BindingList<Question>())!;
-            InterviewQuestionCount = CustomQuestions.Count;
             _audioRecorderService.Initialize(new RecorderConfiguration {
-                SaveMode = SaveMode.SaveToFile,
+                SaveMode = SaveMode.DoNotSave,
                 OutputFilePathBase = Path.Combine(GlobalSettings.AppDataDirectory, "Record")
             });
-            _audioRecorderService.OnError += (_, e) => {
-                _snackbarService.ShowError("音频录制错误，建议重新启动软件", $"{e.Operation} 发生错误: {e.Exception.Message}");
-                _logger.Error("音频录制错误, {e.Operation} 发生错误: {ExMessage}", e.Operation, e.Exception.Message);
-            };
-            RefreshMicrophoneDevices();
+            _audioRecorderService.OnDataAvailable += MicrophoneVolumeHandler;
+            _audioRecorderService.OnError += AudioRecorderErrorHandler;
+            _cameraRecorderService.OnFrameArrived += CameraRecorderHandler;
+            _cameraRecorderService.OnError += CameraRecorderErrorHandler;
+            _emotionAnalysisService.OnError += EmotionAnalysisErrorHandler;
+            _speechRecognitionService.OnError += SpeechRecognitionError;
+            PreparePartInit();
+            InterviewPartInit();
         } catch (Exception e) {
             _snackbarService.ShowError("加载自定义面试题失败", $"错误: {e.Message}");
             _logger.Error("加载自定义面试题失败: {ExMessage}", e.Message);
         }
+    }
+
+    public void Dispose() {
+        _audioRecorderService.OnDataAvailable += MicrophoneVolumeHandler;
+        _audioRecorderService.OnError -= AudioRecorderErrorHandler;
+        _cameraRecorderService.OnFrameArrived -= CameraRecorderHandler;
+        _cameraRecorderService.OnError -= CameraRecorderErrorHandler;
+        _emotionAnalysisService.OnError -= EmotionAnalysisErrorHandler;
+        _speechRecognitionService.OnError -= SpeechRecognitionError;
+        Save();
+        PreparePartDispose();
+        InterviewPartDispose();
     }
 
     #region 准备页面
@@ -100,13 +148,39 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     public bool NeedQuestionCountWarning => InterviewQuestionCount < MinQuestionCount;
 
+    [ObservableProperty] private ImageSource _cameraPicture = null!;
+
+    [ObservableProperty] private ObservableCollection<CameraDevice> _cameraDevices = [];
+
+    [ObservableProperty] private CameraDevice? _selectedCamera;
+
+    [ObservableProperty] private bool _isTestingCamera;
+
+    [ObservableProperty] private bool _needMirrorHorizontal = true;
+
+    public bool IsCameraActive => _cameraRecorderService.IsRunning;
+
     [ObservableProperty] private double _microphoneVolume;
+
+    private double _smoothedVolume;
 
     [ObservableProperty] private ObservableCollection<MicrophoneDevice> _microphoneDevices = [];
 
     [ObservableProperty] private MicrophoneDevice? _selectedMicrophone;
 
     [ObservableProperty] private bool _isTestingMicrophone;
+
+    private void PreparePartInit() {
+        CustomQuestions = _preferencesService.Get("CustomInterviewQuestions", new BindingList<Question>())!;
+        InterviewQuestionCount = CustomQuestions.Count;
+        RefreshMicrophoneDevices();
+        RefreshCameraDevices();
+    }
+
+    private void PreparePartDispose() {
+        StopCamera();
+        _audioRecorderService.Dispose();
+    }
 
     [RelayCommand]
     private void AddCustomQuestion() {
@@ -118,75 +192,111 @@ public partial class InterviewPageViewModel : ObservableObject {
         CustomQuestions.Remove(question);
     }
 
-    private static IEnumerable<MicrophoneDevice> EnumerateMicrophones() {
-        for (int i = 0; i < WaveIn.DeviceCount; i++) {
-            var caps = WaveIn.GetCapabilities(i);
-            yield return new MicrophoneDevice { DeviceIndex = i, Name = caps.ProductName };
+    private void CameraRecorderHandler(object? sender, CameraFrameEventArgs e) {
+        App.Current.Dispatcher.Invoke(() => {
+            CameraPicture =
+                BitmapSource.Create(e.Width, e.Height, 96, 96, PixelFormats.Bgr24, null, e.BgrData, e.Width * 3);
+            _emotionAnalysisService.SubmitFrame(e.BgrData, e.Width, e.Height);
+        });
+    }
+
+    [RelayCommand]
+    private void RefreshCameraDevices() {
+        CameraDevices.Clear();
+        foreach (var cameraDevice in ICameraRecorderService.EnumerateCameras()) {
+            CameraDevices.Add(cameraDevice);
+        }
+
+        SelectedCamera = CameraDevices.FirstOrDefault();
+    }
+
+    private void StartCamera() {
+        var fps = _preferencesService.Get("CameraFps", 30.0);
+        _cameraRecorderService.Start(fps, SelectedCamera?.Index ?? -1);
+        OnPropertyChanged(nameof(IsCameraActive));
+    }
+
+    private Task StartCameraAsync() {
+        return Task.Run(StartCamera);
+    }
+
+    private void StopCamera() {
+        _cameraRecorderService.Stop();
+        CameraPicture = null!;
+        OnPropertyChanged(nameof(IsCameraActive));
+    }
+
+    private Task StopCameraAsync() {
+        return Task.Run(StopCamera);
+    }
+
+    [RelayCommand]
+    private async Task StartCameraTest() {
+        if (_cameraRecorderService.IsRunning) {
+            return;
+        }
+
+        if (SelectedCamera == null) {
+            _snackbarService.ShowError("无摄像头", "未找到摄像头");
+            return;
+        }
+
+        try {
+            await StartCameraAsync();
+            IsTestingCamera = true;
+        } catch (Exception e) {
+            _snackbarService.ShowError("摄像头测试失败", $"错误: {e.Message}");
+            _logger.Error("摄像头测试失败: {ExMessage}", e.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task StopCameraTest() {
+        if (!_cameraRecorderService.IsRunning) {
+            return;
+        }
+
+        await StopCameraAsync();
+        IsTestingCamera = false;
+    }
+
+    async partial void OnSelectedCameraChanged(CameraDevice? oldValue, CameraDevice? newValue) {
+        try {
+            if (oldValue != newValue) {
+                await StopCameraAsync();
+                IsTestingCamera = false;
+            }
+        } catch (Exception e) {
+            _snackbarService.ShowError("关闭摄像头是发生错误", $"错误: {e.Message}");
+            _logger.Error("关闭摄像头是发生错误: {ExMessage}", e.Message);
         }
     }
 
     [RelayCommand]
     private void RefreshMicrophoneDevices() {
-        foreach (var device in EnumerateMicrophones()) {
+        MicrophoneDevices.Clear();
+        foreach (var device in IAudioRecorderService.EnumerateMicrophones()) {
             MicrophoneDevices.Add(device);
         }
 
         SelectedMicrophone = MicrophoneDevices.FirstOrDefault();
     }
 
-    private static double CalculateRms(byte[] buffer, int bytesRecorded) {
-        int samples = bytesRecorded / 2;
-        if (samples == 0) return 0;
-
-        double sum = 0;
-
-        for (int i = 0; i < bytesRecorded; i += 2) {
-            short sample = BitConverter.ToInt16(buffer, i);
-            double normalized = sample / 32768.0;
-            sum += normalized * normalized;
-        }
-
-        return Math.Sqrt(sum / samples);
+    partial void OnNeedMirrorHorizontalChanged(bool value) {
+        _cameraRecorderService.SetMirrorHorizontal(value);
     }
-
-    partial void OnSelectedMicrophoneChanged(MicrophoneDevice? value) {
-        if (value == null) {
-            return;
-        }
-
-        _audioRecorderService.Configuration.InputDeviceIndex = value.DeviceIndex;
-
-        if (IsTestingMicrophone) {
-            StopTestMicrophone();
-        }
-    }
-
-    [RelayCommand]
-    private void StartTestMicrophone() {
-        try {
-            _audioRecorderService.OnDataAvailable += TestMicrophoneHandler;
-            _audioRecorderService.StartRecording();
-            IsTestingMicrophone = true;
-        } catch (Exception e) {
-            _logger.Error("错误: {ExMessage}", e.Message);
-        }
-    }
-
-    private double _smoothedVolume;
 
     private void ShowVolume(byte[] buffer, int bytesRecorded) {
-        double rms = CalculateRms(buffer, bytesRecorded);
+        var rms = CommonHelper.CalculateRms(buffer, bytesRecorded);
 
-        // 对数压缩
-        double display = Math.Log10(1 + rms * 9);
+        var display = Math.Log10(1 + rms * 9);
 
-        // 平滑
         _smoothedVolume = 0.85 * _smoothedVolume + 0.15 * display;
 
         MicrophoneVolume = _smoothedVolume;
     }
 
-    private void TestMicrophoneHandler(object? sender, AudioDataAvailableEventArgs e) {
+    private void MicrophoneVolumeHandler(object? sender, AudioDataAvailableEventArgs e) {
         if (e.IsFinal || e.BytesRecorded == 0) {
             return;
         }
@@ -194,30 +304,71 @@ public partial class InterviewPageViewModel : ObservableObject {
         ShowVolume(e.AudioData, e.BytesRecorded);
     }
 
+    private void StartMicrophone() {
+        _audioRecorderService.StartRecording();
+    }
+
+    private Task StartMicrophoneAsync() {
+        return Task.Run(StartMicrophone);
+    }
+
+    private void StopMicrophone() {
+        _audioRecorderService.StopRecording();
+        MicrophoneVolume = 0;
+    }
+
+    private Task StopMicrophoneAsync() {
+        return Task.Run(StopMicrophone);
+    }
+
     [RelayCommand]
-    private void StopTestMicrophone() {
+    private async Task StartTestMicrophone() {
         try {
-            _audioRecorderService.OnDataAvailable -= TestMicrophoneHandler;
-            _audioRecorderService.StopRecording();
-            IsTestingMicrophone = false;
-            MicrophoneVolume = 0;
+            await StartMicrophoneAsync();
+            IsTestingMicrophone = true;
         } catch (Exception e) {
             _logger.Error("错误: {ExMessage}", e.Message);
         }
     }
 
     [RelayCommand]
-    private void StartInterview() {
+    private async Task StopTestMicrophone() {
+        try {
+            await StopMicrophoneAsync();
+            IsTestingMicrophone = false;
+        } catch (Exception e) {
+            _logger.Error("错误: {ExMessage}", e.Message);
+        }
+    }
+
+    async partial void OnSelectedMicrophoneChanged(MicrophoneDevice? value) {
+        try {
+            if (value == null) {
+                return;
+            }
+
+            _audioRecorderService.Configuration.InputDeviceIndex = value.DeviceIndex;
+
+            if (IsTestingMicrophone) {
+                await StopTestMicrophone();
+            }
+        } catch (Exception e) {
+            _snackbarService.ShowError("关闭麦克风失败", $"错误: {e.Message}");
+            _logger.Error("关闭麦克风失败，错误: {ExMessage}", e.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task StartInterview() {
         if (InterviewQuestionCount < MinQuestionCount || InterviewQuestionCount > 50) {
             _snackbarService.ShowError("面试题数量错误", "面试题数量必须在 " + MinQuestionCount + " 到 50 之间");
             return;
         }
 
+        await StopTestMicrophone();
+        IsTestingCamera = false;
+        await InterviewStart();
         Interviewing = true;
-        StopTestMicrophone();
-        InterviewQuestions = [new Question { QuestionText = "测试题目114514" }, ..CustomQuestions];
-        CurrentQuestionIndex = 0;
-        InterviewPartInit();
     }
 
     #endregion
@@ -229,8 +380,10 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     public string CurrentQuestionIndexText => $"第 {CurrentQuestionIndex + 1} / {InterviewQuestions.Count} 题";
 
+    private string _interviewName = string.Empty;
+
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CurrentQuestion), nameof(CurrentQuestionIndexText))]
-    private BindingList<Question> _interviewQuestions = [];
+    private BindingList<Question> _interviewQuestions = [new() { QuestionText = "占位问题" }];
 
     public Question CurrentQuestion => InterviewQuestions[CurrentQuestionIndex];
 
@@ -238,28 +391,89 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     [ObservableProperty] private FollowUpDepthLevel _followUpDepth;
 
-    [ObservableProperty] private string _currentAnswer = string.Empty;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(AnswerWordCount))]
+    private string _currentQuestionAnswer = string.Empty;
 
-    public long AnswerWordCount => CurrentAnswer.Length;
+    public long AnswerWordCount => CurrentQuestionAnswer.Length;
 
     [ObservableProperty] private bool _isSpeeching;
 
     [ObservableProperty] private string _speechRecognitionResult = string.Empty;
 
-    private async void AudioPushHandler(object? sender, AudioDataAvailableEventArgs e) {
-        try {
-            if (IsSpeeching) {
-                ShowVolume(e.AudioData, e.BytesRecorded);
-            }
+    [ObservableProperty] private EmotionType _facialEmotion;
 
-            await _speechRecognitionService.PushAudioAsync(e);
-        } catch (Exception ex) {
-            _logger.Error("错误: {ExMessage}", ex.Message);
+    [ObservableProperty] private HeadPose _headPose;
+
+    [ObservableProperty] private GazeDirection _gazeDirection;
+
+    private readonly SparkTextDecoder _decoder = new();
+
+    private string _finalText = string.Empty;
+
+    private string _appId = string.Empty;
+    private string _apiKey = string.Empty;
+    private string _apiSecret = string.Empty;
+
+    private void InterviewPartInit() {
+        _audioRecorderService.OnDataAvailable += AudioPushHandler;
+        _speechRecognitionService.OnResult += SpeechRecognitionHandler;
+        _emotionAnalysisService.OnResultUpdated += EmotionAnaysisResultUpdate;
+    }
+
+    private void InterviewPartDispose() {
+        _audioRecorderService.OnDataAvailable -= AudioPushHandler;
+        _speechRecognitionService.OnResult -= SpeechRecognitionHandler;
+        _emotionAnalysisService.OnResultUpdated -= EmotionAnaysisResultUpdate;
+        SpeechStop();
+        if (!string.IsNullOrWhiteSpace(_interviewName)) {
+            SaveAnswer();
         }
     }
 
-    private readonly SparkTextDecoder _decoder = new();
-    private string _finalText = string.Empty;
+    private async Task InterviewStart() {
+        InterviewQuestions = [new Question { QuestionText = "测试题目114514" }, ..CustomQuestions];
+        CurrentQuestionIndex = 0;
+        _interviewName = $"面试-{DateTime.Now:yyyy-MM-dd_HH-mm-ss}";
+        _appId = _preferencesService.Get("SparkAI/AppId", string.Empty)!;
+        _apiKey = _preferencesService.Get("SparkAI/ApiKey", string.Empty)!;
+        _apiSecret = _preferencesService.Get("SparkAI/ApiSecret", string.Empty)!;
+        if (!_cameraRecorderService.IsRunning) {
+            await StartCameraAsync();
+        }
+
+        _emotionAnalysisService.Start();
+    }
+
+    private async Task InterviewStop() {
+        var dialog = new MessageBox {
+            Title = "是否要保存本次面试回答？",
+            Content = "保存后可以查看历史面试记录",
+            PrimaryButtonIcon = new SymbolIcon(SymbolRegular.Save24),
+            PrimaryButtonText = "保存",
+            CloseButtonIcon = new SymbolIcon(SymbolRegular.Dismiss12),
+            CloseButtonText = "取消"
+        };
+        var result = await dialog.ShowDialogAsync();
+        if (result == MessageBoxResult.Primary) {
+            SaveAnswer();
+        }
+
+        ClearSpeechRecognition();
+        _emotionAnalysisService.Stop();
+        _ = SpeechStopAsync();
+        _ = StopCameraAsync();
+        IsSpeeching = false;
+        Interviewing = false;
+    }
+
+    private async void AudioPushHandler(object? sender, AudioDataAvailableEventArgs e) {
+        try {
+            await _speechRecognitionService.PushAudioAsync(e);
+        } catch (Exception ex) {
+            _snackbarService.ShowError("发送音频错误", $"错误信息: {ex.Message}");
+            _logger.Error("发送音频错误: {ExMessage}", ex.Message);
+        }
+    }
 
     private void SpeechRecognitionHandler(object? sender, SpeechRecognitionResultEventArgs e) {
         /*_logger.Debug(
@@ -278,81 +492,103 @@ public partial class InterviewPageViewModel : ObservableObject {
         _decoder.Reset();
     }
 
-
-    private void SpeechRecognitionError(object? sender, SpeechRecognitionErrorEventArgs e) {
-        _logger.Error("语音识别 {Op} 错误: {Message}", e.Operation, e.Exception.Message);
+    private void EmotionAnaysisResultUpdate(object? sender, EmotionAnalysisResultEventArgs e) {
+        FacialEmotion = e.Emotion;
+        HeadPose = e.HeadPose;
+        GazeDirection = e.Gaze;
     }
 
-    private void InterviewPartInit() {
-        try {
-            var appId = _preferencesService.Get("SparkAI/AppId", string.Empty)!;
-            var apiKey = _preferencesService.Get("SparkAI/ApiKey", string.Empty)!;
-            var apiSecret = _preferencesService.Get("SparkAI/ApiSecret", string.Empty)!;
-            _speechRecognitionService.StartAsync(appId, apiKey, apiSecret);
-            _audioRecorderService.OnDataAvailable += AudioPushHandler;
-            _speechRecognitionService.OnResult += SpeechRecognitionHandler;
-            _speechRecognitionService.OnError += SpeechRecognitionError;
-        } catch (Exception e) {
-            _snackbarService.ShowError("错误", "请检查语音识别服务是否正常启动");
-            _logger.Error("语音识别服务启动失败，错误：{Message}", e.Message);
-        }
+    private async Task SpeechStart() {
+        _decoder.Reset();
+        await _speechRecognitionService.StartAsync(_appId, _apiKey, _apiSecret);
+        await StartMicrophoneAsync();
     }
 
-    private void InterviewDispose() {
-        _audioRecorderService.OnDataAvailable -= AudioPushHandler;
-        _audioRecorderService.StopRecording();
-        _speechRecognitionService.OnResult -= SpeechRecognitionHandler;
-        _speechRecognitionService.StopAsync();
+    private void SpeechStop() {
+        StopMicrophone();
+        _speechRecognitionService.StopAsync().Wait();
+    }
+
+    private Task SpeechStopAsync() {
+        return Task.Run(SpeechStop);
     }
 
     [RelayCommand]
-    private void StartSpeechRecognition() {
+    private async Task StartSpeechRecognition() {
         if (IsSpeeching) {
             return;
         }
 
-        IsSpeeching = true;
+        try {
+            await SpeechStart();
+        } catch (Exception e) {
+            _snackbarService.ShowError("语音识别服务启动失败", $"错误：{e.Message}");
+            _logger.Error("语音识别服务启动失败，错误：{Message}", e.Message);
+        }
 
-        _audioRecorderService.StartRecording();
+        IsSpeeching = true;
     }
 
     [RelayCommand]
-    private void StopSpeechRecognition() {
+    private async Task StopSpeechRecognition() {
         if (!IsSpeeching) {
             return;
         }
 
         IsSpeeching = false;
 
-        _audioRecorderService.StopRecording();
+        try {
+            await SpeechStopAsync();
+        } catch (Exception e) {
+            _snackbarService.ShowError("语音识别服务停止失败", $"错误：{e.Message}");
+            _logger.Error("语音识别服务停止失败，错误：{Message}", e.Message);
+        }
 
         MicrophoneVolume = 0;
     }
 
     [RelayCommand]
+    private void AddSpeechAnswer() {
+        CurrentQuestionAnswer += SpeechRecognitionResult;
+    }
+
+    [RelayCommand]
     private void ClearSpeechRecognition() {
         SpeechRecognitionResult = string.Empty;
+        _finalText = string.Empty;
+        _decoder.Reset();
     }
 
     [RelayCommand]
-    private void StopAndBack() {
-        Interviewing = false;
-        IsSpeeching = false;
-        InterviewDispose();
+    private async Task StopAndBack() {
+        await InterviewStop();
+    }
+
+    partial void OnCurrentQuestionAnswerChanged(string value) {
+        CurrentQuestion.CustomAnswer = value;
     }
 
     [RelayCommand]
-    private void PreviousQuestion() {
+    private async Task PreviousQuestion() {
+        SaveAnswer();
+        await StopSpeechRecognition();
         if (CurrentQuestionIndex > 0) {
             CurrentQuestionIndex--;
         }
     }
 
     [RelayCommand]
-    private void NextQuestion() {
+    private async Task NextQuestion() {
+        SaveAnswer();
+        await StopSpeechRecognition();
         if (CurrentQuestionIndex < InterviewQuestions.Count - 1) {
             CurrentQuestionIndex++;
         }
+    }
+
+    [RelayCommand]
+    private void SaveAnswer() {
+        _interviewAnswerSaveService.SaveAnswer(_interviewName, InterviewQuestions.ToList());
     }
 
     #endregion
@@ -376,7 +612,6 @@ public sealed class SparkTextDecoder {
 
         EnsureCapacity(sn);
 
-        // rpl：标记删除
         if (e is { Operation: "rpl", ReplaceRange: not null }) {
             var (start, end) = e.ReplaceRange.Value;
             for (int i = start; i <= end; i++) {

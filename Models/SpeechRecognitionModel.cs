@@ -22,11 +22,6 @@ public class SpeechRecognitionResultEventArgs(
     public KeyValuePair<int, int>? ReplaceRange { get; set; } = replaceRange;
 }
 
-public class SpeechRecognitionErrorEventArgs(Exception exception, string operation) {
-    public Exception Exception { get; } = exception;
-    public string Operation { get; } = operation;
-}
-
 internal sealed class SparkWsResponse {
     public int code { get; set; }
     public string? message { get; set; }

@@ -100,9 +100,8 @@ public class AppRunningHelper {
     public void StartApp() {
         try {
             InitPageWhenStartup();
-            App.Current.SessionEnding += (_, _) => {
-                EndApp();
-            };
+            App.Current.SessionEnding += (_, _) => { EndApp(); };
+            InitDirectory();
             var targetPage = _preferencesService.Get("StartPage", typeof(HomePage))!;
             _navigationService.Navigate(targetPage);
             _logger.Information("程序启动完成，详细版本: [{FullVersion}]", GlobalSettings.FullVersion);
@@ -117,6 +116,12 @@ public class AppRunningHelper {
         }
     }
 
+    private static void InitDirectory() {
+        if (!Directory.Exists(GlobalSettings.TempDirectory)) {
+            Directory.CreateDirectory(GlobalSettings.TempDirectory);
+        }
+    }
+
     private void DisposePageWhenExit() {
         var assembly = Assembly.GetExecutingAssembly();
 
@@ -126,14 +131,36 @@ public class AppRunningHelper {
             .OrderBy(t => t.Name);
 
         foreach (var pageType in pageTypes) {
-            var methodName = pageType.GetCustomAttribute<NeedDisposePageAttribute>()!.DisposeAction;
-            var method = pageType.GetMethod(methodName);
-            method?.Invoke(App.GetService(pageType), null);
+            try {
+                var attr = pageType.GetCustomAttribute<NeedDisposePageAttribute>()!;
+                var method = pageType.GetMethod(attr.DisposeAction)!;
+                var instance = App.GetService(pageType);
+                method.Invoke(instance, null);
+            } catch (Exception ex) {
+                _logger.Error("释放页面失败 {Page}: {Msg}", pageType.Name, ex.Message);
+            }
+        }
+    }
+
+    private static void ClearFolderParallel(string folderPath) {
+        if (!Directory.Exists(folderPath)) {
+            App.GetService<ILogger>()!.Error("文件夹不存在: {FolderPath}", folderPath);
+            return;
+        }
+
+        var directory = new DirectoryInfo(folderPath);
+        foreach (var file in directory.GetFiles()) {
+            file.Delete();
+        }
+
+        foreach (var dir in directory.GetDirectories()) {
+            dir.Delete(true);
         }
     }
 
     public void EndApp() {
         DisposePageWhenExit();
+        ClearFolderParallel(GlobalSettings.TempDirectory);
     }
 
     public void Hide() {

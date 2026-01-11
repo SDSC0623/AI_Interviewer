@@ -10,7 +10,7 @@ public interface ISpeechRecognitionService {
     bool IsRunning { get; }
 
     event EventHandler<SpeechRecognitionResultEventArgs>? OnResult;
-    event EventHandler<SpeechRecognitionErrorEventArgs>? OnError;
+    event EventHandler<ErrorEventArgs>? OnError;
 
     Task StartAsync(string appId, string apiKey, string apiSecret, CancellationToken cancellationToken = default);
     ValueTask PushAudioAsync(AudioDataAvailableEventArgs audio);

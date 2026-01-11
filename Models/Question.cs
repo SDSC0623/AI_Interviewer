@@ -9,4 +9,5 @@ namespace AI_Interviewer.Models;
 public partial class Question : ObservableObject {
     [ObservableProperty] private string _questionText  = string.Empty;
     [ObservableProperty] private DifficultyLevel _difficulty;
+    [ObservableProperty] private string _customAnswer = string.Empty;
 }

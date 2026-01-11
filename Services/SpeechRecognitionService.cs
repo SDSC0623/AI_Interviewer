@@ -38,7 +38,7 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
     public bool IsRunning { get; private set; }
 
     public event EventHandler<SpeechRecognitionResultEventArgs>? OnResult;
-    public event EventHandler<SpeechRecognitionErrorEventArgs>? OnError;
+    public event EventHandler<ErrorEventArgs>? OnError;
 
     public async Task StartAsync(
         string appId,
@@ -70,7 +70,7 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
 
             _sendLoopTask = Task.Run(SendLoopAsync, _serviceCts.Token);
         } catch (Exception ex) {
-            OnError?.Invoke(this, new SpeechRecognitionErrorEventArgs(ex, "StartAsync"));
+            RaiseError(ex, "StartAsync");
             throw;
         }
     }
@@ -93,7 +93,7 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
             if (_sendLoopTask != null)
                 await _sendLoopTask;
         } catch (Exception ex) {
-            OnError?.Invoke(this, new SpeechRecognitionErrorEventArgs(ex, "StopAsync"));
+            RaiseError(ex, "StopAsync");
         } finally {
             _serviceCts?.Dispose();
             _serviceCts = null;
@@ -187,7 +187,7 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
             }
         } catch (OperationCanceledException) {
         } catch (Exception ex) {
-            OnError?.Invoke(this, new SpeechRecognitionErrorEventArgs(ex, "SendLoop"));
+            RaiseError(ex, "SendLoop");
         }
     }
 
@@ -212,8 +212,7 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
             }
         } catch (OperationCanceledException) {
         } catch (Exception ex) {
-            OnError?.Invoke(this,
-                new SpeechRecognitionErrorEventArgs(ex, "ReceiveLoop"));
+            RaiseError(ex, "ReceiveLoop");
         }
     }
 
@@ -236,7 +235,6 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
                 text, isFinal, null, result.sn, result.pgs, range));
 
         if (isFinal && IsMeaninglessFinal(text)) {
-            OnResult?.Invoke(this, new SpeechRecognitionResultEventArgs("", true));
             _ = RestartSessionAsync();
         }
     }
@@ -325,5 +323,9 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
         query["host"] = host;
 
         return $"wss://{host}{requestUri}?{query}";
+    }
+
+    private void RaiseError(Exception ex, string operation) {
+        OnError?.Invoke(this, new ErrorEventArgs(ex, operation));
     }
 }

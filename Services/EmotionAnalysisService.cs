@@ -28,11 +28,11 @@ public class EmotionAnalysisService : IEmotionAnalysisService {
     private Thread? _workerThread;
     private CancellationTokenSource? _cts;
 
-    private readonly TimeSpan _analysisInterval = TimeSpan.FromMilliseconds(300);
+    private readonly TimeSpan _analysisInterval = TimeSpan.FromMilliseconds(100);
     private DateTime _lastAnalysisTime = DateTime.MinValue;
 
     private readonly CascadeClassifier _faceCascade;
-    private readonly CascadeClassifier _eyeCascade;
+    // private readonly CascadeClassifier _eyeCascade;
 
     private readonly InferenceSession _emotionSession;
 
@@ -42,8 +42,8 @@ public class EmotionAnalysisService : IEmotionAnalysisService {
         _faceCascade = new CascadeClassifier(
             Path.Combine(cascadePath, "haarcascade_frontalface_default.xml"));
 
-        _eyeCascade = new CascadeClassifier(
-            Path.Combine(cascadePath, "haarcascade_eye.xml"));
+        // _eyeCascade = new CascadeClassifier(
+        //     Path.Combine(cascadePath, "haarcascade_eye.xml"));
 
         var modelPath = EmotionModelBootstrapper
             .EnsureEmotionModel(GlobalSettings.AppDataDirectory);
@@ -107,8 +107,11 @@ public class EmotionAnalysisService : IEmotionAnalysisService {
         var token = (CancellationToken)obj!;
 
         while (!token.IsCancellationRequested) {
-            // 等新帧 or 超时
-            _frameArrived.WaitOne(_analysisInterval);
+            // _frameArrived.WaitOne(_analysisInterval);
+            if (DateTime.Now - _lastAnalysisTime < _analysisInterval) {
+                Thread.Sleep(DateTime.Now - _lastAnalysisTime);
+                continue;
+            }
 
             if (token.IsCancellationRequested) {
                 break;
@@ -130,49 +133,12 @@ public class EmotionAnalysisService : IEmotionAnalysisService {
             try {
                 var result = AnalyzeInternal(frame, w, h);
                 OnResultUpdated?.Invoke(this, result);
+                _lastAnalysisTime = DateTime.Now;
             } catch (Exception ex) {
                 RaiseError(ex, "WorkerLoop");
             }
         }
     }
-
-
-    /*private void WorkerLoop(object? obj) {
-        var token = (CancellationToken)obj!;
-
-        while (!token.IsCancellationRequested) {
-            try {
-                if (DateTime.UtcNow - _lastAnalysisTime < _analysisInterval) {
-                    Thread.Sleep(_analysisInterval);
-                    continue;
-                }
-
-                byte[]? frame;
-                int w, h;
-
-                lock (_frameLock) {
-                    if (_latestFrame == null) {
-                        Thread.Sleep(100);
-                        continue;
-                    }
-
-                    frame = (byte[])_latestFrame.Clone();
-                    w = _frameWidth;
-                    h = _frameHeight;
-                }
-
-                _lastAnalysisTime = DateTime.UtcNow;
-
-                var result = AnalyzeInternal(frame, w, h);
-
-                OnResultUpdated?.Invoke(this, result);
-            } catch (OperationCanceledException) {
-                /* 正常退出 #1#
-            } catch (Exception ex) {
-                RaiseError(ex, "WorkerLoop");
-            }
-        }
-    }*/
 
     private int _faceDetectCounter;
     private Rect[] _cachedFaces = [];
@@ -254,15 +220,15 @@ public class EmotionAnalysisService : IEmotionAnalysisService {
             using var faceGray = new Mat(mat, face);
             Cv2.CvtColor(faceGray, faceGray, ColorConversionCodes.BGR2GRAY);
 
-            var emotion = AnalyzeEmotionByCnn(faceGray);
-            var headPose = AnalyzeHeadPose(face, mat.Width, mat.Height);
-            var gaze = AnalyzeGaze(faceGray);
+            var emotionAndConfidence = AnalyzeEmotionByCnn(faceGray);
+            // var headPose = AnalyzeHeadPose(face, mat.Width, mat.Height);
+            // var gaze = AnalyzeGaze(faceGray);
 
             return new EmotionAnalysisResultEventArgs {
-                Emotion = emotion,
-                HeadPose = headPose,
-                Gaze = gaze,
-                Confidence = 0.8
+                Emotion = emotionAndConfidence.EmotionType,
+                HeadPose = new HeadPose(HeadHorizontalPose.Unknown, HeadVerticalPose.Unknown),
+                Gaze = GazeDirection.Unknown,
+                Confidence = emotionAndConfidence.Confidence
             };
         } catch (Exception ex) {
             RaiseError(ex, "AnalyzeInternal");
@@ -274,19 +240,19 @@ public class EmotionAnalysisService : IEmotionAnalysisService {
         using var resized = new Mat();
         Cv2.Resize(faceGray, resized, new Size(48, 48));
 
-        var data = new float[1 * 48 * 48 * 1];
+        // 归一化处理：直接使用 OpenCV 的向量化操作
+        using var floatMat = new Mat();
+        resized.ConvertTo(floatMat, MatType.CV_32FC1, 1.0 / 255.0);
 
-        int idx = 0;
-        for (int y = 0; y < 48; y++) {
-            for (int x = 0; x < 48; x++) {
-                data[idx++] = resized.At<byte>(y, x) / 255f;
-            }
-        }
+        var data = new float[48 * 48];
+        Marshal.Copy(floatMat.Data, data, 0, data.Length);
 
         return new DenseTensor<float>(data, [1, 48, 48, 1]);
     }
 
-    private EmotionType AnalyzeEmotionByCnn(Mat faceGray) {
+    private record EmotionTypeAndConfidence(EmotionType EmotionType, double Confidence);
+
+    private EmotionTypeAndConfidence AnalyzeEmotionByCnn(Mat faceGray) {
         var inputTensor = PreprocessFace(faceGray);
 
         var inputs = new List<NamedOnnxValue> {
@@ -298,7 +264,7 @@ public class EmotionAnalysisService : IEmotionAnalysisService {
 
         int maxIndex = Array.IndexOf(scores, scores.Max());
 
-        return maxIndex switch {
+        return new EmotionTypeAndConfidence(maxIndex switch {
             0 => EmotionType.Angry,
             1 => EmotionType.Disgusted,
             2 => EmotionType.Fearful,
@@ -307,10 +273,10 @@ public class EmotionAnalysisService : IEmotionAnalysisService {
             5 => EmotionType.Sad,
             6 => EmotionType.Surprised,
             _ => EmotionType.Unknown
-        };
+        }, scores[maxIndex]);
     }
 
-    private HeadPose AnalyzeHeadPose(Rect face, int frameWidth, int frameHeight) {
+    /*private HeadPose AnalyzeHeadPose(Rect face, int frameWidth, int frameHeight) {
         int faceCenterX = face.X + face.Width / 2;
         int faceCenterY = face.Y + face.Height / 2;
 
@@ -331,9 +297,9 @@ public class EmotionAnalysisService : IEmotionAnalysisService {
             HeadVerticalPose.Up;
 
         return new HeadPose(horizontal, vertical);
-    }
+    }*/
 
-    private GazeDirection AnalyzeGaze(Mat faceGray) {
+    /*private GazeDirection AnalyzeGaze(Mat faceGray) {
         var eyes = _eyeCascade.DetectMultiScale(
             faceGray,
             scaleFactor: 1.1,
@@ -355,13 +321,12 @@ public class EmotionAnalysisService : IEmotionAnalysisService {
         }
 
         return offsetRatio > 0 ? GazeDirection.Right : GazeDirection.Left;
-    }
+    }*/
 
 
     private static EmotionAnalysisResultEventArgs NoFaceResult() {
         return EmotionAnalysisResultEventArgs.NoFace;
     }
-
 
     private void RaiseError(Exception ex, string operation) {
         OnError?.Invoke(this, new ErrorEventArgs(ex, operation));

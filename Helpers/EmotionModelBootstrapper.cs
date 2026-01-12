@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace AI_Interviewer.Helpers;
 
-public class EmotionModelBootstrapper {
+public static class EmotionModelBootstrapper {
     private const string ModelFileName = "emotion.onnx";
 
     public static string EnsureEmotionModel(string appDataRoot) {

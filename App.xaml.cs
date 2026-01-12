@@ -81,6 +81,8 @@ public partial class App : Application {
             services.AddSingleton<IInterviewAnswerSaveService, InterviewAnswerSaveService>();
             services.AddTransient<ICameraRecorderService, CameraRecorderService>();
             services.AddTransient<IEmotionAnalysisService, EmotionAnalysisService>();
+            services.AddTransient<ILlmChatService, LlmChatService>();
+            services.AddSingleton<IInterviewQuestionService, InterviewQuestionService>();
 
             // 特殊服务
             services.AddSingleton<SnackbarServiceHelper>(); // 弹窗服务

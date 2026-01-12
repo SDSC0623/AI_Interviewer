@@ -9,11 +9,12 @@ using AI_Interviewer.Models;
 using AI_Interviewer.Services.IServices;
 using AI_Interviewer.ViewModels;
 using AI_Interviewer.Views.Windows;
-using Serilog;
 using Wpf.Ui;
 using Wpf.Ui.Abstractions;
 using Wpf.Ui.Controls;
 using Wpf.Ui.Tray.Controls;
+using MessageBox = Wpf.Ui.Controls.MessageBox;
+using MessageBoxResult = Wpf.Ui.Controls.MessageBoxResult;
 
 namespace AI_Interviewer.Views;
 
@@ -53,6 +54,22 @@ public partial class MainWindow : INavigationWindow {
     protected override async void OnClosing(CancelEventArgs e) {
         try {
             e.Cancel = true;
+
+            var result = _appRunningHelper.NeedConfirmBeforeEndApp();
+
+            if (result.NeedConfirm) {
+                var dialog = new MessageBox {
+                    Title = "有任务正在运行，是否退出？",
+                    Content = $"{result.Sender} 正在运行中，退出会终止任务且不会保存进度。",
+                    PrimaryButtonText = "退出",
+                    PrimaryButtonAppearance = ControlAppearance.Danger,
+                    CloseButtonText = "取消"
+                };
+                if (await dialog.ShowDialogAsync() != MessageBoxResult.Primary) {
+                    return;
+                }
+            }
+
             var mode = _preferencesService.Get("ExitMode", ExitMode.Ask);
             if (mode == ExitMode.Ask) {
                 var dialog = App.GetService<AskBeforeExit>()!;

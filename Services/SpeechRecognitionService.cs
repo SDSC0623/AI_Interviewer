@@ -3,10 +3,9 @@
 // See LICENSE file in the project root for full license information.
 
 using System.Net.WebSockets;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Channels;
-using System.Web;
+using AI_Interviewer.Helpers;
 using AI_Interviewer.Models;
 using AI_Interviewer.Services.IServices;
 using Newtonsoft.Json;
@@ -90,8 +89,9 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
 
             await StopSessionAsync();
 
-            if (_sendLoopTask != null)
-                await _sendLoopTask;
+            if (_sendLoopTask != null) {
+                _receiveLoopTask = null;
+            }
         } catch (Exception ex) {
             RaiseError(ex, "StopAsync");
         } finally {
@@ -130,7 +130,7 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
         _sessionCts = CancellationTokenSource.CreateLinkedTokenSource(_serviceCts!.Token);
 
         var ws = new ClientWebSocket();
-        var url = BuildAuthUrl(_apiKey, _apiSecret);
+        var url = SparkWebSocketAuthHelper.BuildAuthUrl(_apiKey, _apiSecret, "wss://iat-api.xfyun.cn/v2/iat");
 
         await ws.ConnectAsync(new Uri(url), _sessionCts.Token);
 
@@ -156,8 +156,8 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
                     CancellationToken.None);
             }
 
-            if (_receiveLoopTask != null)
-                await _receiveLoopTask;
+            if (_receiveLoopTask != null) {
+            }
         } finally {
             _ws?.Dispose();
             _ws = null;
@@ -293,36 +293,6 @@ public sealed class SpeechRecognitionService : ISpeechRecognitionService {
             WebSocketMessageType.Text,
             true,
             _sessionCts!.Token);
-    }
-
-    private static string BuildAuthUrl(string apiKey, string apiSecret) {
-        const string host = "iat-api.xfyun.cn";
-        const string requestUri = "/v2/iat";
-
-        var date = DateTime.UtcNow.ToString("r");
-
-        var signatureOrigin =
-            $"host: {host}\n" +
-            $"date: {date}\n" +
-            $"GET {requestUri} HTTP/1.1";
-
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(apiSecret));
-        var signature = Convert.ToBase64String(
-            hmac.ComputeHash(Encoding.UTF8.GetBytes(signatureOrigin)));
-
-        var authorizationOrigin =
-            $"api_key=\"{apiKey}\", algorithm=\"hmac-sha256\", " +
-            $"headers=\"host date request-line\", signature=\"{signature}\"";
-
-        var authorization =
-            Convert.ToBase64String(Encoding.UTF8.GetBytes(authorizationOrigin));
-
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["authorization"] = authorization;
-        query["date"] = date;
-        query["host"] = host;
-
-        return $"wss://{host}{requestUri}?{query}";
     }
 
     private void RaiseError(Exception ex, string operation) {

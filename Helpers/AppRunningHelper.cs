@@ -10,11 +10,13 @@ using System.Windows;
 using System.Windows.Controls;
 using Serilog;
 using AI_Interviewer.Attributes;
+using AI_Interviewer.Models;
 using AI_Interviewer.Services;
 using AI_Interviewer.Services.IServices;
 using AI_Interviewer.Views.Pages.HomePage;
 using Wpf.Ui;
 using MessageBox = Wpf.Ui.Violeta.Controls.MessageBox;
+// ReSharper disable ConvertToPrimaryConstructor
 
 namespace AI_Interviewer.Helpers;
 
@@ -156,6 +158,32 @@ public class AppRunningHelper {
         foreach (var dir in directory.GetDirectories()) {
             dir.Delete(true);
         }
+    }
+
+    public event Func<BeforeExitArgs>? CallBeforeExit;
+
+    public BeforeExitArgs NeedConfirmBeforeEndApp() {
+        if (CallBeforeExit == null) {
+            return BeforeExitArgs.Empty;
+        }
+
+        var finalResult = false;
+        List<string> senderList = [];
+        try {
+            foreach (var @delegate in CallBeforeExit.GetInvocationList()) {
+                var handler = (Func<BeforeExitArgs>)@delegate;
+                var handlerResult = handler.Invoke();
+                if (handlerResult.NeedConfirm) {
+                    finalResult = true;
+                    senderList.Add(handlerResult.Sender?.ToString() ?? string.Empty);
+                }
+            }
+        } catch (Exception ex) {
+            _logger.Error("处理器异常: {ExMessage}", ex.Message);
+            finalResult = false;
+        }
+
+        return new BeforeExitArgs(finalResult, senderList.Count > 0 ? string.Join(", ", senderList) : "None");
     }
 
     public void EndApp() {

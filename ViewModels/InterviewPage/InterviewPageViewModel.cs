@@ -31,6 +31,9 @@ public partial class InterviewPageViewModel : ObservableObject {
     // 提示信息服务
     private readonly SnackbarServiceHelper _snackbarService;
 
+    // 问题生成服务
+    private readonly IInterviewQuestionService _interviewQuestionService;
+
     // 摄像头录制服务
     private readonly ICameraRecorderService _cameraRecorderService;
 
@@ -49,7 +52,8 @@ public partial class InterviewPageViewModel : ObservableObject {
     public InterviewPageViewModel(IPreferencesService preferencesService, ILogger logger,
         SnackbarServiceHelper snackbarService, IAudioRecorderService audioRecorderService,
         ISpeechRecognitionService speechRecognitionService, IInterviewAnswerSaveService interviewAnswerSaveService,
-        ICameraRecorderService cameraRecorderService, IEmotionAnalysisService emotionAnalysisService) {
+        ICameraRecorderService cameraRecorderService, IEmotionAnalysisService emotionAnalysisService,
+        IInterviewQuestionService interviewQuestionService) {
         _preferencesService = preferencesService;
         _logger = logger;
         _snackbarService = snackbarService;
@@ -58,6 +62,7 @@ public partial class InterviewPageViewModel : ObservableObject {
         _interviewAnswerSaveService = interviewAnswerSaveService;
         _cameraRecorderService = cameraRecorderService;
         _emotionAnalysisService = emotionAnalysisService;
+        _interviewQuestionService = interviewQuestionService;
         Init();
         CustomQuestions.ListChanged += (_, _) => {
             OnPropertyChanged(nameof(HasCustomQuestions));
@@ -111,6 +116,7 @@ public partial class InterviewPageViewModel : ObservableObject {
             _cameraRecorderService.OnError += CameraRecorderErrorHandler;
             _emotionAnalysisService.OnError += EmotionAnalysisErrorHandler;
             _speechRecognitionService.OnError += SpeechRecognitionError;
+            App.GetService<AppRunningHelper>()!.CallBeforeExit += () => new BeforeExitArgs(Interviewing, "面试");
             PreparePartInit();
             InterviewPartInit();
         } catch (Exception e) {
@@ -170,9 +176,12 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     [ObservableProperty] private bool _isTestingMicrophone;
 
+    [ObservableProperty] private bool _canStartInterviewing = true;
+
     private void PreparePartInit() {
         CustomQuestions = _preferencesService.Get("CustomInterviewQuestions", new BindingList<Question>())!;
         InterviewQuestionCount = CustomQuestions.Count;
+        _cameraRecorderService.SetMirrorHorizontal(NeedMirrorHorizontal);
         RefreshMicrophoneDevices();
         RefreshCameraDevices();
     }
@@ -368,15 +377,21 @@ public partial class InterviewPageViewModel : ObservableObject {
         await StopTestMicrophone();
         IsTestingCamera = false;
         await InterviewStart();
-        Interviewing = true;
+        CanStartInterviewing = false;
     }
 
     #endregion
 
     #region 面试页面
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CurrentQuestion), nameof(CurrentQuestionIndexText))]
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPreviousQuestion), nameof(HasNextQuestion)
+        , nameof(CurrentQuestion), nameof(CurrentQuestionIndexText))]
     private int _currentQuestionIndex;
+
+    public bool HasPreviousQuestion => CurrentQuestionIndex > 0 && HasGeneratedQuestion;
+
+    public bool HasNextQuestion => CurrentQuestionIndex < InterviewQuestions.Count - 1 && HasGeneratedQuestion;
 
     public string CurrentQuestionIndexText => $"第 {CurrentQuestionIndex + 1} / {InterviewQuestions.Count} 题";
 
@@ -387,7 +402,8 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     public Question CurrentQuestion => InterviewQuestions[CurrentQuestionIndex];
 
-    [ObservableProperty] private bool _hasGeneratedQuestion;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasPreviousQuestion), nameof(HasNextQuestion))]
+    private bool _hasGeneratedQuestion;
 
     [ObservableProperty] private FollowUpDepthLevel _followUpDepth;
 
@@ -402,9 +418,9 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     [ObservableProperty] private EmotionType _facialEmotion;
 
-    [ObservableProperty] private HeadPose _headPose;
+    // [ObservableProperty] private HeadPose _headPose;
 
-    [ObservableProperty] private GazeDirection _gazeDirection;
+    // [ObservableProperty] private GazeDirection _gazeDirection;
 
     private readonly SparkTextDecoder _decoder = new();
 
@@ -424,36 +440,51 @@ public partial class InterviewPageViewModel : ObservableObject {
         _audioRecorderService.OnDataAvailable -= AudioPushHandler;
         _speechRecognitionService.OnResult -= SpeechRecognitionHandler;
         _emotionAnalysisService.OnResultUpdated -= EmotionAnaysisResultUpdate;
+        StopCamera();
         SpeechStop();
-        if (!string.IsNullOrWhiteSpace(_interviewName)) {
-            SaveAnswer();
-        }
     }
 
     private async Task InterviewStart() {
-        InterviewQuestions = [new Question { QuestionText = "测试题目114514" }, ..CustomQuestions];
-        CurrentQuestionIndex = 0;
-        _interviewName = $"面试-{DateTime.Now:yyyy-MM-dd_HH-mm-ss}";
-        _appId = _preferencesService.Get("SparkAI/AppId", string.Empty)!;
-        _apiKey = _preferencesService.Get("SparkAI/ApiKey", string.Empty)!;
-        _apiSecret = _preferencesService.Get("SparkAI/ApiSecret", string.Empty)!;
-        if (!_cameraRecorderService.IsRunning) {
-            await StartCameraAsync();
-        }
+        try {
+            InterviewQuestions = [new Question { QuestionText = "测试题目114514" }, ..CustomQuestions];
+            CurrentQuestionIndex = 0;
+            _interviewName = $"面试-{DateTime.Now:yyyy-MM-dd_HH-mm-ss}";
+            _appId = _preferencesService.Get("SparkAI/AppId", string.Empty)!;
+            _apiKey = _preferencesService.Get("SparkAI/ApiKey", string.Empty)!;
+            _apiSecret = _preferencesService.Get("SparkAI/ApiSecret", string.Empty)!;
+            if (!_cameraRecorderService.IsRunning && CameraDevices.Count > 0) {
+                await StartCameraAsync();
+            }
 
-        _emotionAnalysisService.Start();
+            _emotionAnalysisService.Start();
+            Interviewing = true;
+
+            _interviewQuestionService.Init(_appId, _apiKey, _apiSecret);
+            var resume = _preferencesService.Get("UserResume", new Resume())!;
+            InterviewQuestions = new BindingList<Question>(await _interviewQuestionService.GenerateQuestionsAsync(
+                resume, SelectedDifficulty, InterviewQuestionCount,
+                CancellationToken.None));
+            HasGeneratedQuestion = true;
+        } catch (Exception e) {
+            _snackbarService.ShowError("面试启动失败", $"错误: {e.Message}");
+            _logger.Error("面试启动失败，错误: {ExMessage}", e.Message);
+        }
     }
 
-    private async Task InterviewStop() {
-        var dialog = new MessageBox {
-            Title = "是否要保存本次面试回答？",
-            Content = "保存后可以查看历史面试记录",
-            PrimaryButtonIcon = new SymbolIcon(SymbolRegular.Save24),
-            PrimaryButtonText = "保存",
-            CloseButtonIcon = new SymbolIcon(SymbolRegular.Dismiss12),
-            CloseButtonText = "取消"
-        };
-        var result = await dialog.ShowDialogAsync();
+    private async Task InterviewStop(bool needConfirm) {
+        var result = needConfirm ? MessageBoxResult.None : MessageBoxResult.Primary;
+        if (needConfirm) {
+            var dialog = new MessageBox {
+                Title = "是否要保存本次面试回答？",
+                Content = "保存后可以查看历史面试记录",
+                PrimaryButtonIcon = new SymbolIcon(SymbolRegular.Save24),
+                PrimaryButtonText = "保存",
+                CloseButtonIcon = new SymbolIcon(SymbolRegular.Dismiss12),
+                CloseButtonText = "取消"
+            };
+            result = await dialog.ShowDialogAsync();
+        }
+
         if (result == MessageBoxResult.Primary) {
             SaveAnswer();
         }
@@ -464,6 +495,10 @@ public partial class InterviewPageViewModel : ObservableObject {
         _ = StopCameraAsync();
         IsSpeeching = false;
         Interviewing = false;
+        _ = Task.Run(async () => {
+            await Task.Delay(5000);
+            CanStartInterviewing = true;
+        });
     }
 
     private async void AudioPushHandler(object? sender, AudioDataAvailableEventArgs e) {
@@ -494,8 +529,8 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     private void EmotionAnaysisResultUpdate(object? sender, EmotionAnalysisResultEventArgs e) {
         FacialEmotion = e.Emotion;
-        HeadPose = e.HeadPose;
-        GazeDirection = e.Gaze;
+        // HeadPose = e.HeadPose;
+        // GazeDirection = e.Gaze;
     }
 
     private async Task SpeechStart() {
@@ -505,8 +540,10 @@ public partial class InterviewPageViewModel : ObservableObject {
     }
 
     private void SpeechStop() {
-        StopMicrophone();
-        _speechRecognitionService.StopAsync().Wait();
+        Task.Run(() => {
+            StopMicrophone();
+            _speechRecognitionService.StopAsync();
+        }).Wait(3000);
     }
 
     private Task SpeechStopAsync() {
@@ -561,7 +598,7 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     [RelayCommand]
     private async Task StopAndBack() {
-        await InterviewStop();
+        await InterviewStop(true);
     }
 
     partial void OnCurrentQuestionAnswerChanged(string value) {
@@ -572,23 +609,33 @@ public partial class InterviewPageViewModel : ObservableObject {
     private async Task PreviousQuestion() {
         SaveAnswer();
         await StopSpeechRecognition();
-        if (CurrentQuestionIndex > 0) {
+        if (HasPreviousQuestion) {
             CurrentQuestionIndex--;
         }
+
+        CurrentQuestionAnswer = CurrentQuestion.CustomAnswer;
     }
 
     [RelayCommand]
     private async Task NextQuestion() {
         SaveAnswer();
         await StopSpeechRecognition();
-        if (CurrentQuestionIndex < InterviewQuestions.Count - 1) {
+        if (HasNextQuestion) {
             CurrentQuestionIndex++;
         }
+
+        CurrentQuestionAnswer = CurrentQuestion.CustomAnswer;
     }
 
     [RelayCommand]
     private void SaveAnswer() {
         _interviewAnswerSaveService.SaveAnswer(_interviewName, InterviewQuestions.ToList());
+    }
+
+    [RelayCommand]
+    private async Task FinishInterview() {
+        SaveAnswer();
+        await InterviewStop(false);
     }
 
     #endregion

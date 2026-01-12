@@ -508,7 +508,7 @@
 
                                 <ui:NumberBox Grid.Row="0" Grid.Column="1"
                                               Value="{Binding InterviewQuestionCount, UpdateSourceTrigger=PropertyChanged}"
-                                              Minimum="{Binding MinQuestionCount}" Maximum="50"
+                                              Minimum="{Binding MinQuestionCount}" Maximum="10"
                                               ClearButtonEnabled="False"
                                               Width="180"
                                               HorizontalAlignment="Left"
@@ -540,16 +540,20 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <!-- 左侧留空 -->
                         <StackPanel Grid.Column="0" />
 
+                        <ui:TextBlock Grid.Column="1" Text="每次结束面试后，有5秒冷却时间。"
+                                      VerticalAlignment="Center" FontTypography="BodyStrong"/>
+
                         <!-- 下一步按钮 -->
-                        <ui:Button Grid.Column="1"
+                        <ui:Button Grid.Column="2"
                                    Content="下一步"
                                    Padding="16,10"
-                                   Appearance="Primary"
+                                   Appearance="Primary" IsEnabled="{Binding CanStartInterviewing}"
                                    Command="{Binding StartInterviewCommand}"
                                    FontSize="14" Icon="{ui:SymbolIcon ArrowRight24}" />
                     </Grid>
@@ -886,14 +890,14 @@
                                            HorizontalAlignment="Stretch">
                                     <StackPanel>
                                         <!-- 表情分析 -->
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                            <ui:TextBlock Text="表情：" FontTypography="Caption" Width="60" />
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:TextBlock Text="表情：" FontTypography="Subtitle" Width="60" />
                                             <ui:TextBlock
                                                 Text="{Binding FacialEmotion, Converter={StaticResource EnumDescriptionConverter}}"
-                                                FontTypography="Caption" />
+                                                FontTypography="Subtitle" />
                                         </StackPanel>
 
-                                        <!-- 头部姿态 -->
+                                        <!--~1~ 头部姿态 @1@
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                             <ui:TextBlock Text="头部姿态：" FontTypography="Caption" Width="60" />
                                             <ui:TextBlock
@@ -901,13 +905,13 @@
                                                 FontTypography="Caption" />
                                         </StackPanel>
 
-                                        <!-- 视线方向 -->
+                                        ~1~ 视线方向 @1@
                                         <StackPanel Orientation="Horizontal">
                                             <ui:TextBlock Text="视线方向：" FontTypography="Caption" Width="60" />
                                             <ui:TextBlock
                                                 Text="{Binding GazeDirection, Converter={StaticResource EnumDescriptionConverter}}"
                                                 FontTypography="Caption" />
-                                        </StackPanel>
+                                        </StackPanel>-->
                                     </StackPanel>
                                 </ui:Border>
                             </Grid>
@@ -1043,7 +1047,7 @@
                         <ui:Button Grid.Column="2"
                                    Content="上一题" Icon="{ui:SymbolIcon ArrowLeft24}"
                                    Padding="16,10" Margin="0,0,12,0"
-                                   Appearance="Secondary" FontSize="14" IsEnabled="{Binding HasGeneratedQuestion}"
+                                   Appearance="Secondary" FontSize="14" IsEnabled="{Binding HasPreviousQuestion}"
                                    Command="{Binding PreviousQuestionCommand}" />
 
                         <!-- 下一页按钮 -->
@@ -1051,16 +1055,21 @@
                                    Content="下一页" Icon="{ui:SymbolIcon ArrowRight24}"
                                    Margin="0,0,12,0"
                                    Padding="16,10" FontSize="14"
-                                   Appearance="Primary" IsEnabled="{Binding HasGeneratedQuestion}"
+                                   Appearance="Primary" IsEnabled="{Binding HasNextQuestion}"
                                    Command="{Binding NextQuestionCommand}" />
 
                         <!-- 保存答案按钮 -->
-                        <ui:Button Grid.Column="4"
-                                   Content="保存答案"
-                                   Padding="16,10"
-                                   Appearance="Success" Icon="{ui:SymbolIcon Save24}"
-                                   Command="{Binding SaveAnswerCommand}"
-                                   FontSize="14" />
+                        <controls:TwoStateButton Grid.Column="4"
+                                                 Padding="16,10" FontSize="14"
+                                                 Appearance="Success"
+                                                 IsEnabled="{Binding HasGeneratedQuestion}"
+                                                 IsChecked="{Binding HasNextQuestion}"
+                                                 EnableContent="保存并结束面试"
+                                                 EnableIcon="{ui:SymbolIcon Save24}"
+                                                 EnableCommand="{Binding FinishInterviewCommand}"
+                                                 DisableContent="保存当前回答"
+                                                 DisableIcon="{ui:SymbolIcon Save24}"
+                                                 DisableCommand="{Binding SaveAnswerCommand}"/>
                     </Grid>
                 </ui:Border>
             </Grid>

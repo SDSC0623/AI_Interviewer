@@ -389,28 +389,33 @@ public partial class InterviewPageViewModel : ObservableObject {
         , nameof(CurrentQuestion), nameof(CurrentQuestionIndexText))]
     private int _currentQuestionIndex;
 
-    public bool HasPreviousQuestion => CurrentQuestionIndex > 0 && HasGeneratedQuestion;
+    public bool HasPreviousQuestion => CurrentQuestionIndex > 0 && HasGeneratedQuestion && HasGeneratedFollowUpQuestion;
 
-    public bool HasNextQuestion => CurrentQuestionIndex < InterviewQuestions.Count - 1 && HasGeneratedQuestion;
-
-    public string CurrentQuestionIndexText => $"第 {CurrentQuestionIndex + 1} / {InterviewQuestions.Count} 题";
+    public bool HasNextQuestion => CurrentQuestionIndex < InterviewQuestions.Count - 1 && HasGeneratedQuestion &&
+                                   HasGeneratedFollowUpQuestion;
 
     private string _interviewName = string.Empty;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CurrentQuestion), nameof(CurrentQuestionIndexText))]
+    public string CurrentQuestionIndexText => $"第 {CurrentQuestionIndex + 1} / {InterviewQuestions.Count} 题";
+
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CurrentQuestionIndexText), nameof(CurrentQuestion))]
     private BindingList<Question> _interviewQuestions = [new() { QuestionText = "占位问题" }];
 
     public Question CurrentQuestion => InterviewQuestions[CurrentQuestionIndex];
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasPreviousQuestion), nameof(HasNextQuestion))]
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPreviousQuestion), nameof(HasNextQuestion), nameof(CanSaveOrFinish))]
     private bool _hasGeneratedQuestion;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPreviousQuestion), nameof(HasNextQuestion), nameof(CanSaveOrFinish))]
+    private bool _hasGeneratedFollowUpQuestion = true;
+
+    public bool CanSaveOrFinish => HasGeneratedQuestion && HasGeneratedFollowUpQuestion;
 
     [ObservableProperty] private FollowUpDepthLevel _followUpDepth;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(AnswerWordCount))]
-    private string _currentQuestionAnswer = string.Empty;
-
-    public long AnswerWordCount => CurrentQuestionAnswer.Length;
+    [ObservableProperty] private string _currentQuestionAnswer = string.Empty;
 
     [ObservableProperty] private bool _isSpeeching;
 
@@ -423,6 +428,8 @@ public partial class InterviewPageViewModel : ObservableObject {
     // [ObservableProperty] private GazeDirection _gazeDirection;
 
     private readonly SparkTextDecoder _decoder = new();
+
+    private readonly EmotionStatisticsCollector _emotionCollector = new();
 
     private string _finalText = string.Empty;
 
@@ -444,10 +451,17 @@ public partial class InterviewPageViewModel : ObservableObject {
         SpeechStop();
     }
 
+    partial void OnInterviewQuestionsChanged(BindingList<Question>? oldValue, BindingList<Question> newValue) {
+        if (oldValue != newValue) {
+            InterviewQuestions.ListChanged += (_, _) => {
+                OnPropertyChanged(nameof(CurrentQuestion));
+                OnPropertyChanged(nameof(CurrentQuestionIndexText));
+            };
+        }
+    }
+
     private async Task InterviewStart() {
         try {
-            InterviewQuestions = [new Question { QuestionText = "测试题目114514" }, ..CustomQuestions];
-            CurrentQuestionIndex = 0;
             _interviewName = $"面试-{DateTime.Now:yyyy-MM-dd_HH-mm-ss}";
             _appId = _preferencesService.Get("SparkAI/AppId", string.Empty)!;
             _apiKey = _preferencesService.Get("SparkAI/ApiKey", string.Empty)!;
@@ -458,13 +472,21 @@ public partial class InterviewPageViewModel : ObservableObject {
 
             _emotionAnalysisService.Start();
             Interviewing = true;
+            _cts = new CancellationTokenSource();
 
             _interviewQuestionService.Init(_appId, _apiKey, _apiSecret);
             var resume = _preferencesService.Get("UserResume", new Resume())!;
-            InterviewQuestions = new BindingList<Question>(await _interviewQuestionService.GenerateQuestionsAsync(
-                resume, SelectedDifficulty, InterviewQuestionCount,
-                CancellationToken.None));
+            InterviewQuestions = [
+                ..CustomQuestions.Select(question => {
+                    question.QuestionText += " (用户自定义题目)";
+                    return question;
+                }),
+                ..await _interviewQuestionService.GenerateQuestionsAsync(resume, SelectedDifficulty,
+                    InterviewQuestionCount, _cts.Token)
+            ];
+            CurrentQuestionIndex = 0;
             HasGeneratedQuestion = true;
+        } catch (OperationCanceledException) {
         } catch (Exception e) {
             _snackbarService.ShowError("面试启动失败", $"错误: {e.Message}");
             _logger.Error("面试启动失败，错误: {ExMessage}", e.Message);
@@ -478,17 +500,31 @@ public partial class InterviewPageViewModel : ObservableObject {
                 Title = "是否要保存本次面试回答？",
                 Content = "保存后可以查看历史面试记录",
                 PrimaryButtonIcon = new SymbolIcon(SymbolRegular.Save24),
-                PrimaryButtonText = "保存",
+                PrimaryButtonAppearance = ControlAppearance.Danger,
+                PrimaryButtonText = "不保存",
                 CloseButtonIcon = new SymbolIcon(SymbolRegular.Dismiss12),
-                CloseButtonText = "取消"
+                CloseButtonText = "保存",
+                CloseButtonAppearance = ControlAppearance.Success
             };
             result = await dialog.ShowDialogAsync();
         }
 
         if (result == MessageBoxResult.Primary) {
+            _interviewAnswerSaveService.DeleteAnswer(_interviewName);
+        } else {
             SaveAnswer();
         }
 
+        CurrentQuestionAnswer = string.Empty;
+        _interviewName = string.Empty;
+        _appId = string.Empty;
+        _apiKey = string.Empty;
+        _apiSecret = string.Empty;
+        InterviewQuestions = [new Question { QuestionText = "占位问题" }];
+        HasGeneratedQuestion = false;
+        HasGeneratedFollowUpQuestion = true;
+
+        await _cts.CancelAsync();
         ClearSpeechRecognition();
         _emotionAnalysisService.Stop();
         _ = SpeechStopAsync();
@@ -499,6 +535,27 @@ public partial class InterviewPageViewModel : ObservableObject {
             await Task.Delay(5000);
             CanStartInterviewing = true;
         });
+    }
+
+    private CancellationTokenSource _cts = new();
+
+    [RelayCommand]
+    private async Task GenerateFollowUpQuestion() {
+        try {
+            HasGeneratedFollowUpQuestion = false;
+            var question =
+                await _interviewQuestionService.GenerateFollowUpQuestionAsync(CurrentQuestion, FollowUpDepth,
+                    _cts.Token);
+            question.QuestionText +=
+                $"(问题 {CurrentQuestionIndex + 1} 的 {CommonHelper.GetEnumDescription(FollowUpDepth)} 追问深度的追问)";
+            InterviewQuestions.Insert(CurrentQuestionIndex + 1, question);
+            await NextQuestion();
+            HasGeneratedFollowUpQuestion = true;
+        } catch (OperationCanceledException) {
+        } catch (Exception e) {
+            _snackbarService.ShowError("生成追问失败", $"错误: {e.Message}");
+            _logger.Error("生成追问失败，错误: {ExMessage}", e.Message);
+        }
     }
 
     private async void AudioPushHandler(object? sender, AudioDataAvailableEventArgs e) {
@@ -529,6 +586,9 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     private void EmotionAnaysisResultUpdate(object? sender, EmotionAnalysisResultEventArgs e) {
         FacialEmotion = e.Emotion;
+        if (CanSaveOrFinish) {
+            _emotionCollector.AddSample(e.Emotion);
+        }
         // HeadPose = e.HeadPose;
         // GazeDirection = e.Gaze;
     }
@@ -598,6 +658,7 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     [RelayCommand]
     private async Task StopAndBack() {
+        _emotionCollector.Reset();
         await InterviewStop(true);
     }
 
@@ -629,7 +690,8 @@ public partial class InterviewPageViewModel : ObservableObject {
 
     [RelayCommand]
     private void SaveAnswer() {
-        _interviewAnswerSaveService.SaveAnswer(_interviewName, InterviewQuestions.ToList());
+        _interviewAnswerSaveService.SaveAnswer(_interviewName, InterviewQuestions.ToList(),
+            _emotionCollector.BuildSummary(), _preferencesService.Get("UserResume", new Resume())!);
     }
 
     [RelayCommand]

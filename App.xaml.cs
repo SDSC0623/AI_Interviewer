@@ -11,11 +11,13 @@ using AI_Interviewer.Services.IServices;
 using AI_Interviewer.ViewModels;
 using AI_Interviewer.ViewModels.AskBeforeExitDialog;
 using AI_Interviewer.ViewModels.HomePage;
+using AI_Interviewer.ViewModels.InterviewResultAnalysisPage;
 using AI_Interviewer.ViewModels.InterviewPage;
 using AI_Interviewer.ViewModels.SettingPage;
 using AI_Interviewer.ViewModels.UserInfoPage;
 using AI_Interviewer.Views;
 using AI_Interviewer.Views.Pages.HomePage;
+using AI_Interviewer.Views.Pages.InterviewResultAnalysisPage;
 using AI_Interviewer.Views.Pages.InterviewPage;
 using AI_Interviewer.Views.Pages.SettingPage;
 using AI_Interviewer.Views.Pages.UserInfoPage;
@@ -106,6 +108,9 @@ public partial class App : Application {
             // 面试页面
             services.AddSingleton<InterviewPageViewModel>();
             services.AddSingleton<InterviewPage>();
+            // 面试结果分析页面
+            services.AddSingleton<InterviewResultAnalysisViewModel>();
+            services.AddSingleton<InterviewResultAnalysisPage>();
 
             // 问询对话框
             services.AddTransient<AskBeforeExitViewModel>();

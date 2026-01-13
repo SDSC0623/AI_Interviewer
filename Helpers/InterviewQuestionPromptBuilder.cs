@@ -98,8 +98,7 @@ public static class InterviewQuestionPromptBuilder {
         };
     }
 
-    public static string BuildFollowUpPrompt(Question currentQuestion, string candidateAnswer,
-        FollowUpDepthLevel depth) {
+    public static string BuildFollowUpPrompt(Question currentQuestion, FollowUpDepthLevel depth) {
         var depthText = CommonHelper.GetEnumDescription(depth);
         var depthRequirement = GetDepthRequirement(depthText);
 
@@ -112,7 +111,7 @@ public static class InterviewQuestionPromptBuilder {
         sb.AppendLine(currentQuestion.QuestionText);
         sb.AppendLine();
         sb.AppendLine("【候选人回答】");
-        sb.AppendLine(candidateAnswer);
+        sb.AppendLine(currentQuestion.CustomAnswer);
         sb.AppendLine();
         sb.AppendLine($"【{depthText}追问要求】");
         sb.AppendLine(depthRequirement);

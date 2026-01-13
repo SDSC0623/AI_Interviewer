@@ -12,7 +12,6 @@ public interface IInterviewQuestionService {
     Task<List<Question>> GenerateQuestionsAsync(Resume resume, DifficultyLevel difficulty, int count,
         CancellationToken cancellationToken = default);
 
-    Task<Question> GenerateFollowUpQuestionAsync(Question currentQuestion, string candidateAnswer,
-        FollowUpDepthLevel depth,
+    Task<Question> GenerateFollowUpQuestionAsync(Question currentQuestion, FollowUpDepthLevel depth,
         CancellationToken cancellationToken = default);
 }

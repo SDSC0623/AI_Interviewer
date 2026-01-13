@@ -9,7 +9,6 @@ using AI_Interviewer.Models;
 using AI_Interviewer.Services.IServices;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using Serilog;
 
 namespace AI_Interviewer.Services;
 

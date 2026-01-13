@@ -525,7 +525,7 @@
                                                        FontSize="16"
                                                        Foreground="#F44336"
                                                        Margin="0,0,8,0" />
-                                        <ui:TextBlock Text="必须大于等于自定义题目数量"
+                                        <ui:TextBlock Text="必须大于等于自定义题目数量且大于1"
                                                       FontTypography="Caption"
                                                       FontSize="12"
                                                       Foreground="#F44336" />
@@ -752,8 +752,8 @@
                                                Content="生成追问" Icon="{ui:SymbolIcon Sparkle24}"
                                                Padding="8,6" Margin="10,0,0,0"
                                                HorizontalAlignment="Left"
-                                               Appearance="Primary" FontSize="14"
-                                               Command="{Binding GenerateFollowUpCommand}" />
+                                               Appearance="Primary" FontSize="14" IsEnabled="{Binding HasGeneratedQuestion}"
+                                               Command="{Binding GenerateFollowUpQuestionCommand}" />
                                 </Grid>
                             </ui:Border>
 
@@ -796,7 +796,7 @@
                                                           FontTypography="Caption"
                                                           FontSize="12"
                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                            <ui:TextBlock Text="{Binding AnswerWordCount}"
+                                            <ui:TextBlock Text="{Binding CurrentQuestionAnswer.Length}"
                                                           FontTypography="Caption"
                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                           Margin="4,0,0,0" />
@@ -1062,7 +1062,7 @@
                         <controls:TwoStateButton Grid.Column="4"
                                                  Padding="16,10" FontSize="14"
                                                  Appearance="Success"
-                                                 IsEnabled="{Binding HasGeneratedQuestion}"
+                                                 IsEnabled="{Binding CanSaveOrFinish}"
                                                  IsChecked="{Binding HasNextQuestion}"
                                                  EnableContent="保存并结束面试"
                                                  EnableIcon="{ui:SymbolIcon Save24}"

@@ -6,5 +6,8 @@ namespace AI_Interviewer.Models;
 
 public class InterviewAnswer {
     public string Name { get; set; } = string.Empty;
+    public required DateTime Time { get; set; }
     public List<Question> QAndA { get; set; } = [];
+    public Resume Resume { get; set; } = new();
+    public EmotionSummary EmotionSummary { get; set; } = new();
 }

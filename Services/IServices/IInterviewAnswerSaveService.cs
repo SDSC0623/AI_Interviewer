@@ -9,7 +9,17 @@ using AI_Interviewer.Models;
 namespace AI_Interviewer.Services.IServices;
 
 public interface IInterviewAnswerSaveService {
-    void SaveAnswer(string name, List<Question> qAndA);
+    /// <summary>
+    /// 特别提醒，命名要符合如下规范:
+    /// "面试-{DateTime.Now:yyyy-MM-dd_HH-mm-ss}"
+    /// </summary>
+    /// <param name="name">文件名</param>
+    /// <param name="qAndA">问题和回答List</param>
+    /// <param name="emotionSummary">情绪分布</param>
+    /// <param name="resume">简历</param>
+    void SaveAnswer(string name, List<Question> qAndA, EmotionSummary emotionSummary, Resume resume);
+
+    void DeleteAnswer(string name);
     InterviewAnswer GetAnswer(string name);
     List<InterviewAnswer> GetAllAnswer();
 }

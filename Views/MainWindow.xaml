@@ -11,6 +11,7 @@
                  xmlns:settingPage="clr-namespace:AI_Interviewer.Views.Pages.SettingPage"
                  xmlns:userInfoPage="clr-namespace:AI_Interviewer.Views.Pages.UserInfoPage"
                  xmlns:interviewPage="clr-namespace:AI_Interviewer.Views.Pages.InterviewPage"
+                 xmlns:InterviewResultAnalysisPage="clr-namespace:AI_Interviewer.Views.Pages.InterviewResultAnalysisPage"
                  ExtendsContentIntoTitleBar="True"
                  mc:Ignorable="d"
                  d:DesignHeight="2550"
@@ -86,6 +87,15 @@
                                        TargetPageType="{x:Type interviewPage:InterviewPage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="ClipboardBulletListLtr20" Filled="True" Height="20" Width="20" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
+                <!-- 面试结果分析页 -->
+                <ui:NavigationViewItem Content="面试结果分析"
+                                       NavigationCacheMode="Enabled"
+                                       TargetPageType="{x:Type InterviewResultAnalysisPage:InterviewResultAnalysisPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="AppsList24" Filled="True" Height="20" Width="20" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
 

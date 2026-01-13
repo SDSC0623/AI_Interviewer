@@ -12,9 +12,13 @@ public class InterviewQuestionService(ILlmChatService llmChatService) : IIntervi
     private string _appId = string.Empty;
     private string _apiKey = string.Empty;
     private string _apiSecret = string.Empty;
-    private bool _hasInitialized = false;
+    private bool _hasInitialized;
 
     public void Init(string appId, string apiKey, string apiSecret) {
+        if (_hasInitialized) {
+            return;
+        }
+
         _appId = appId;
         _apiKey = apiKey;
         _apiSecret = apiSecret;
@@ -64,11 +68,10 @@ public class InterviewQuestionService(ILlmChatService llmChatService) : IIntervi
         return InterviewQuestionPromptBuilder.ParseQuestions(content, difficulty);
     }
 
-    public async Task<Question> GenerateFollowUpQuestionAsync(Question currentQuestion, string candidateAnswer,
-        FollowUpDepthLevel depth,
+    public async Task<Question> GenerateFollowUpQuestionAsync(Question currentQuestion, FollowUpDepthLevel depth,
         CancellationToken cancellationToken = default) {
         EnsureInit();
-        var prompt = InterviewQuestionPromptBuilder.BuildFollowUpPrompt(currentQuestion, candidateAnswer, depth);
+        var prompt = InterviewQuestionPromptBuilder.BuildFollowUpPrompt(currentQuestion, depth);
         var request = new SparkChatRequest {
             Header = new SparkRequestHeader {
                 AppId = _appId

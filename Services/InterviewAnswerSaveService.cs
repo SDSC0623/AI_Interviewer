@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 // See LICENSE file in the project root for full license information.
 
+using System.Globalization;
 using System.IO;
 using System.Text;
 using AI_Interviewer.Helpers;
@@ -14,7 +15,7 @@ namespace AI_Interviewer.Services;
 public class InterviewAnswerSaveService : IInterviewAnswerSaveService {
     private static string FolderPath => Path.Combine(GlobalSettings.AppDataDirectory, "InterviewAnswer");
 
-    public void SaveAnswer(string name, List<Question> qAndA) {
+    public void SaveAnswer(string name, List<Question> qAndA, EmotionSummary emotionSummary, Resume resume) {
         if (string.IsNullOrWhiteSpace(name)) {
             throw new ArgumentException("name cannot be empty.", nameof(name));
         }
@@ -23,12 +24,38 @@ public class InterviewAnswerSaveService : IInterviewAnswerSaveService {
 
         EnsureFolderExists();
         var path = GetFilePath(name);
+        bool success = DateTime.TryParseExact(
+            name,
+            "'面试-'yyyy-MM-dd_HH-mm-ss",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out DateTime time
+        );
+
+        if (!success) {
+            throw new ArgumentException("命名不符合规范");
+        }
+
         var answer = new InterviewAnswer {
             Name = name,
-            QAndA = qAndA
+            Time = time,
+            QAndA = qAndA,
+            Resume = resume,
+            EmotionSummary = emotionSummary
         };
         var json = JsonConvert.SerializeObject(answer, Formatting.Indented);
         File.WriteAllText(path, json);
+    }
+
+    public void DeleteAnswer(string name) {
+        if (string.IsNullOrWhiteSpace(name)) {
+            throw new ArgumentException("name cannot be empty.", nameof(name));
+        }
+
+        var path = GetFilePath(name);
+        if (File.Exists(path)) {
+            File.Delete(path);
+        }
     }
 
     public InterviewAnswer GetAnswer(string name) {
@@ -40,7 +67,10 @@ public class InterviewAnswerSaveService : IInterviewAnswerSaveService {
         if (!File.Exists(path)) {
             return new InterviewAnswer {
                 Name = name,
-                QAndA = []
+                Time = DateTime.MinValue,
+                QAndA = [],
+                Resume = new Resume(),
+                EmotionSummary = new EmotionSummary()
             };
         }
 
@@ -49,7 +79,10 @@ public class InterviewAnswerSaveService : IInterviewAnswerSaveService {
         if (answer == null) {
             return new InterviewAnswer {
                 Name = name,
-                QAndA = []
+                Time = DateTime.MinValue,
+                QAndA = [],
+                Resume = new Resume(),
+                EmotionSummary = new EmotionSummary()
             };
         }
 

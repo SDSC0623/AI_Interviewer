@@ -13,12 +13,14 @@ using AI_Interviewer.ViewModels.AskBeforeExitDialog;
 using AI_Interviewer.ViewModels.HomePage;
 using AI_Interviewer.ViewModels.InterviewResultAnalysisPage;
 using AI_Interviewer.ViewModels.InterviewPage;
+using AI_Interviewer.ViewModels.LearningPathPage;
 using AI_Interviewer.ViewModels.SettingPage;
 using AI_Interviewer.ViewModels.UserInfoPage;
 using AI_Interviewer.Views;
 using AI_Interviewer.Views.Pages.HomePage;
 using AI_Interviewer.Views.Pages.InterviewResultAnalysisPage;
 using AI_Interviewer.Views.Pages.InterviewPage;
+using AI_Interviewer.Views.Pages.LearningPathPage;
 using AI_Interviewer.Views.Pages.SettingPage;
 using AI_Interviewer.Views.Pages.UserInfoPage;
 using AI_Interviewer.Views.Windows;
@@ -85,6 +87,8 @@ public partial class App : Application {
             services.AddTransient<IEmotionAnalysisService, EmotionAnalysisService>();
             services.AddTransient<ILlmChatService, LlmChatService>();
             services.AddSingleton<IInterviewQuestionService, InterviewQuestionService>();
+            services.AddSingleton<IInterviewResultService, InterviewResultService>();
+            services.AddSingleton<ILearningPathService, LearningPathService>();
 
             // 特殊服务
             services.AddSingleton<SnackbarServiceHelper>(); // 弹窗服务
@@ -111,6 +115,9 @@ public partial class App : Application {
             // 面试结果分析页面
             services.AddSingleton<InterviewResultAnalysisViewModel>();
             services.AddSingleton<InterviewResultAnalysisPage>();
+            // 个人学习路径页面
+            services.AddSingleton<LearningPathViewModel>();
+            services.AddSingleton<LearningPathPage>();
 
             // 问询对话框
             services.AddTransient<AskBeforeExitViewModel>();

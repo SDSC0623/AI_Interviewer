@@ -9,6 +9,7 @@
       xmlns:interviewResultAnalysisPage="clr-namespace:AI_Interviewer.ViewModels.InterviewResultAnalysisPage"
       xmlns:converters="clr-namespace:AI_Interviewer.Converters"
       xmlns:behaviors="clr-namespace:AI_Interviewer.Behaviors"
+      xmlns:controls="clr-namespace:AI_Interviewer.Controls"
       mc:Ignorable="d"
       d:DesignHeight="1800"
       d:DesignWidth="1000"
@@ -19,6 +20,8 @@
     <Page.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:EnumDescriptionConverter x:Key="EnumDescriptionConverter" />
+        <converters:BoolInverseConverter x:Key="BoolInverseConverter" />
+        <converters:FieldConverter x:Key="FieldConverter" />
     </Page.Resources>
     <Grid>
         <ui:DynamicScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
@@ -46,7 +49,8 @@
                                   FontSize="24"
                                   FontWeight="Bold" />
                     <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon ArrowSync24, Filled=True, FontSize=22}"
-                               Command="{Binding RefreshInterviewAnswerCommand}"/>
+                               IsEnabled="{Binding IsGeneratingResult, Converter={StaticResource BoolInverseConverter}}"
+                               Command="{Binding RefreshInterviewAnswerCommand}" />
                 </Grid>
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
@@ -97,26 +101,47 @@
                                                     CommandParameter="{Binding}"
                                                     Self="{Binding}" />
                                             </i:Interaction.Behaviors>
-                                            <StackPanel>
-                                                <!-- 时间 -->
-                                                <ui:TextBlock
-                                                    Text="{Binding Time, StringFormat=面试时间：{0:yyyy-MM-dd HH:mm}}"
-                                                    FontTypography="Body"
-                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                    Margin="0,0,0,4" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <!-- 时间 -->
+                                                    <ui:TextBlock
+                                                        Text="{Binding Time, StringFormat=面试时间：{0:yyyy-MM-dd HH:mm}}"
+                                                        FontTypography="Body"
+                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                        Margin="0,0,0,4" />
 
-                                                <!-- 岗位 -->
-                                                <ui:TextBlock
-                                                    Text="{Binding Resume.JobIntention.TargetPosition, StringFormat=面试岗位：{0}}"
-                                                    FontTypography="BodyStrong"
-                                                    Margin="0,0,0,4" />
+                                                    <!-- 岗位 -->
+                                                    <ui:TextBlock
+                                                        Text="{Binding Resume.JobIntention.TargetPosition, StringFormat=面试岗位：{0}}"
+                                                        FontTypography="BodyStrong" TextWrapping="Wrap"
+                                                        Margin="0,0,0,4" />
 
-                                                <!-- 题目数量 -->
-                                                <ui:TextBlock
-                                                    Text="{Binding QAndA.Count, StringFormat=题目数量：{0}}"
-                                                    FontTypography="Body"
-                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                            </StackPanel>
+                                                    <!-- 题目数量 -->
+                                                    <ui:TextBlock
+                                                        Text="{Binding QAndA.Count, StringFormat=题目数量：{0}}"
+                                                        FontTypography="Body" TextWrapping="Wrap"
+                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                </StackPanel>
+                                                <ui:Flyout Grid.Column="1"
+                                                           IsOpen="{Binding IsMenuOpen}"
+                                                           Placement="Top">
+                                                    <Grid Margin="4">
+                                                        <ui:Button Appearance="Danger" Content="删除"
+                                                                   Icon="{ui:SymbolIcon Delete24, Filled=True, FontSize=22}"
+                                                                   Command="{Binding DataContext.DeleteInterviewCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:InterviewResultAnalysisPage}}}"
+                                                                   CommandParameter="{Binding}" />
+                                                    </Grid>
+                                                </ui:Flyout>
+                                                <ui:Button Grid.Column="1"
+                                                           Icon="{ui:SymbolIcon MoreHorizontal16, Filled=True, FontSize=22}"
+                                                           Appearance="Secondary"
+                                                           Command="{Binding DataContext.OpenMenuCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:InterviewResultAnalysisPage}}}"
+                                                           CommandParameter="{Binding}" />
+                                            </Grid>
                                         </ui:Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -125,94 +150,217 @@
                     </ui:Border>
 
                     <!-- 右侧：面试详情 -->
-                    <Grid Grid.Column="2">
-                        <!-- 未选择提示 -->
-                        <ui:Border Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                   BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                   BorderThickness="1"
-                                   Visibility="{Binding HasSelectedInterview, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=True}">
-                            <StackPanel HorizontalAlignment="Center"
-                                        VerticalAlignment="Center">
-                                <ui:SymbolIcon Symbol="DocumentSearch24"
-                                               FontSize="48"
-                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                               Margin="0,0,0,12" />
-                                <ui:TextBlock Text="请选择左侧一条面试记录查看详情"
-                                              FontSize="16"
-                                              Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                        </ui:Border>
-
-                        <!-- 已选择 -->
-                        <ui:DynamicScrollViewer Padding="20">
-                            <StackPanel
-                                Visibility="{Binding HasSelectedInterview, Converter={StaticResource BooleanToVisibilityConverter}}">
-
-                                <!-- 标题 -->
-                                <ui:TextBlock
-                                    Text="{Binding SelectedInterview.Resume.JobIntention.TargetPosition, StringFormat={}{0} 面试报告}"
-                                    FontSize="24"
-                                    FontWeight="Bold"
-                                    Margin="0,0,0,8" />
-
-                                <!-- 时间 + 题目数 -->
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                    <ui:TextBlock
-                                        Text="{Binding SelectedInterview.Time, StringFormat={}{0:yyyy年MM月dd日 HH:mm}}"
-                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                    <ui:TextBlock Text=" · " Margin="6,0" />
-                                    <ui:TextBlock
-                                        Text="{Binding SelectedInterview.QAndA.Count, StringFormat=共 {0} 题}"
-                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <TabControl Grid.Column="2">
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Margin="0,0,6,0" Symbol="ClipboardBulletListLtr16" />
+                                    <ui:TextBlock Text="面试详情" />
                                 </StackPanel>
+                            </TabItem.Header>
+                            <Grid>
+                                <!-- 未选择提示 -->
+                                <ui:Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                           BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                           BorderThickness="1"
+                                           Visibility="{Binding HasSelectedInterview, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=True}">
+                                    <StackPanel HorizontalAlignment="Center"
+                                                VerticalAlignment="Center">
+                                        <ui:SymbolIcon Symbol="DocumentSearch24"
+                                                       FontSize="48"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                       Margin="0,0,0,12" />
+                                        <ui:TextBlock Text="请选择左侧一条面试记录查看详情"
+                                                      FontSize="16"
+                                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                </ui:Border>
 
-                                <!-- 分析报告按钮 -->
-                                <ui:Button Appearance="Primary"
-                                           Padding="16,8"
-                                           Margin="0,0,0,24"
-                                           HorizontalAlignment="Left"
-                                           Content="生成分析报告（AI）" />
+                                <!-- 已选择 -->
+                                <ui:DynamicScrollViewer Padding="20">
+                                    <StackPanel
+                                        Visibility="{Binding HasSelectedInterview, Converter={StaticResource BooleanToVisibilityConverter}}">
 
-                                <!-- 问答详情 -->
-                                <ItemsControl ItemsSource="{Binding SelectedInterview.QAndA}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <ui:Border CornerRadius="8"
-                                                       BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                                       BorderThickness="1"
-                                                       Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                                       Padding="20"
-                                                       Margin="0,0,0,16">
-                                                <StackPanel>
+                                        <!-- 标题 -->
+                                        <ui:TextBlock
+                                            Text="{Binding SelectedInterview.Resume.JobIntention.TargetPosition, StringFormat={}{0} 面试报告}"
+                                            FontSize="24"
+                                            FontWeight="Bold" TextWrapping="Wrap"
+                                            Margin="0,0,0,8" />
 
-                                                    <ui:TextBlock Text="{Binding QuestionText}"
-                                                                  FontSize="16"
-                                                                  FontWeight="SemiBold"
-                                                                  TextWrapping="Wrap"
-                                                                  Margin="0,0,0,8" />
+                                        <!-- 时间 + 题目数 -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                            <ui:TextBlock TextWrapping="Wrap"
+                                                          Text="{Binding SelectedInterview.Time, StringFormat={}{0:yyyy年MM月dd日 HH:mm}}"
+                                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                            <ui:TextBlock Text=" · " Margin="6,0" />
+                                            <ui:TextBlock TextWrapping="Wrap"
+                                                          Text="{Binding SelectedInterview.QAndA.Count, StringFormat=共 {0} 题}"
+                                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
 
+                                        <!-- 分析报告按钮 -->
+                                        <ui:Button Appearance="Primary"
+                                                   Padding="16,8"
+                                                   Margin="0,0,0,24"
+                                                   HorizontalAlignment="Left"
+                                                   Content="生成分析报告（AI）"
+                                                   Command="{Binding GenerateAnalysisReportCommand}" />
+
+                                        <!-- 问答详情 -->
+                                        <ItemsControl ItemsSource="{Binding SelectedInterview.QAndA}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <ui:Border CornerRadius="8"
+                                                               BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                                               BorderThickness="1"
+                                                               Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                               Padding="20"
+                                                               Margin="0,0,0,16">
+                                                        <StackPanel>
+
+                                                            <ui:TextBlock Text="{Binding QuestionText}"
+                                                                          FontSize="16"
+                                                                          FontWeight="SemiBold"
+                                                                          TextWrapping="Wrap"
+                                                                          Margin="0,0,0,8" />
+
+                                                            <ui:TextBlock
+                                                                Text="{Binding Difficulty, Converter={StaticResource EnumDescriptionConverter}}"
+                                                                FontSize="12" TextWrapping="Wrap"
+                                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                Margin="0,0,0,12" />
+
+                                                            <ui:TextBlock Text="回答："
+                                                                          FontTypography="Caption"
+                                                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                          Margin="0,0,0,4" />
+
+                                                            <ui:TextBlock Text="{Binding CustomAnswer}"
+                                                                          FontSize="14"
+                                                                          TextWrapping="Wrap" />
+                                                        </StackPanel>
+                                                    </ui:Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </ui:DynamicScrollViewer>
+                            </Grid>
+                        </TabItem>
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Margin="0,0,6,0" Symbol="SlideText16" />
+                                    <ui:TextBlock Text="面试报告" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <Grid>
+                                <StackPanel
+                                    Visibility="{Binding HasResult, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel Margin="0,0,0,24">
+                                        <ui:TextBlock Text="面试综合评价" FontSize="18" FontWeight="SemiBold" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                            <ui:TextBlock
+                                                Text="{Binding  SelectedInterview.InterviewAnalysisResult.Overall.Score}"
+                                                FontSize="36"
+                                                FontWeight="Bold" TextWrapping="Wrap"
+                                                Foreground="{DynamicResource SystemAccentColorBrush}" />
+                                            <ui:TextBlock
+                                                Text="{Binding SelectedInterview.InterviewAnalysisResult.Overall.Level}"
+                                                Margin="12,16,0,0" TextWrapping="Wrap"
+                                                FontSize="14" />
+                                        </StackPanel>
+
+                                        <ui:TextBlock
+                                            Text="{Binding SelectedInterview.InterviewAnalysisResult.Overall.Summary}"
+                                            TextWrapping="Wrap"
+                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                    <ItemsControl
+                                        ItemsSource="{Binding SelectedInterview.InterviewAnalysisResult.Dimensions}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,0,0,12">
                                                     <ui:TextBlock
-                                                        Text="{Binding Difficulty, Converter={StaticResource EnumDescriptionConverter}}"
-                                                        FontSize="12"
-                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                        Margin="0,0,0,12" />
-
-                                                    <ui:TextBlock Text="回答："
-                                                                  FontTypography="Caption"
-                                                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                                  Margin="0,0,0,4" />
-
-                                                    <ui:TextBlock Text="{Binding CustomAnswer}"
-                                                                  FontSize="14"
-                                                                  TextWrapping="Wrap" />
+                                                        Text="{Binding Key, Mode=OneWay, Converter={StaticResource FieldConverter}}"
+                                                        TextWrapping="Wrap" />
+                                                    <ProgressBar Value="{Binding Value.Score, Mode=OneWay}"
+                                                                 Maximum="100" Height="6" Margin="0,4,0,4" />
+                                                    <ui:TextBlock Text="{Binding Value.Comment, Mode=OneWay}"
+                                                                  FontSize="12" TextWrapping="Wrap"
+                                                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                                 </StackPanel>
-                                            </ui:Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </ui:DynamicScrollViewer>
-                    </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Grid Margin="0,16,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <ui:TextBlock Text="优势" FontWeight="SemiBold" />
+                                            <ItemsControl
+                                                ItemsSource="{Binding SelectedInterview.InterviewAnalysisResult.Strengths}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <ui:TextBlock Text="{Binding StringFormat=•  {0}}"
+                                                                      TextWrapping="Wrap" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2">
+                                            <ui:TextBlock Text="风险" FontWeight="SemiBold" />
+                                            <ItemsControl
+                                                ItemsSource="{Binding SelectedInterview.InterviewAnalysisResult.Risks}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <ui:TextBlock Text="{Binding StringFormat=•  {0}}"
+                                                                      TextWrapping="Wrap" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Grid>
+                                    <ui:Border Margin="0,24,0,0"
+                                               Padding="12"
+                                               CornerRadius="8"
+                                               Background="{DynamicResource SystemFillColorAttentionBrush}">
+                                        <StackPanel>
+                                            <ui:TextBlock Text="面试结论" FontWeight="SemiBold" />
+                                            <ui:TextBlock
+                                                Text="{Binding SelectedInterview.InterviewAnalysisResult.Recommendation.Result}"
+                                                FontWeight="Bold" TextWrapping="Wrap" />
+                                            <ui:TextBlock
+                                                Text="{Binding SelectedInterview.InterviewAnalysisResult.Recommendation.Notes}"
+                                                FontSize="12" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </ui:Border>
+                                </StackPanel>
+                                <!-- 未选择提示 -->
+                                <ui:Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                           BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                           BorderThickness="1"
+                                           Visibility="{Binding ShowNoResult, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel HorizontalAlignment="Center"
+                                                VerticalAlignment="Center">
+                                        <ui:SymbolIcon Symbol="DocumentSearch24" FontSize="48"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                       Margin="0,0,0,12" />
+                                        <ui:TextBlock Text="暂未生成面试分析结果" FontSize="16" TextWrapping="Wrap"
+                                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                </ui:Border>
+                                <controls:LoadingBox IsActive="{Binding IsGeneratingResult}"
+                                                     LoadingMessage="正在生成面试分析结果..." />
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
                 </Grid>
             </Grid>
         </ui:DynamicScrollViewer>

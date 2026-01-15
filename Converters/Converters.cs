@@ -49,3 +49,24 @@ public class BoolInverseConverter : IValueConverter {
         return false;
     }
 }
+
+public class FieldConverter : IValueConverter {
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) {
+        if (value is string field) {
+            return field switch {
+                "professional_ability" => "个人能力",
+                "communication" => "交流能力",
+                "thinking_ability" => "思考能力",
+                "attitude_and_values" => "态度与价值",
+                "learning_potential" => "学习潜力",
+                _ => field
+            };
+        }
+
+        return value;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) {
+        throw new UnexpectedCallException();
+    }
+}

@@ -17,8 +17,10 @@ public interface IInterviewAnswerSaveService {
     /// <param name="qAndA">问题和回答List</param>
     /// <param name="emotionSummary">情绪分布</param>
     /// <param name="resume">简历</param>
-    void SaveAnswer(string name, List<Question> qAndA, EmotionSummary emotionSummary, Resume resume);
+    /// <param name="interviewAnalysisResult">分析结果</param>
+    void SaveAnswer(string name, List<Question> qAndA, EmotionSummary emotionSummary, Resume resume, InterviewAnalysisResult? interviewAnalysisResult = null);
 
+    void SaveAnswer(InterviewAnswer interviewAnswer);
     void DeleteAnswer(string name);
     InterviewAnswer GetAnswer(string name);
     List<InterviewAnswer> GetAllAnswer();

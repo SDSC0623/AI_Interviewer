@@ -1,0 +1,86 @@
+﻿<Page x:Class="AI_Interviewer.Views.Pages.LearningPathPage.LearningPathPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:controls="clr-namespace:AI_Interviewer.Controls"
+      xmlns:learningPathPage="clr-namespace:AI_Interviewer.ViewModels.LearningPathPage"
+      xmlns:converters="clr-namespace:AI_Interviewer.Converters"
+      mc:Ignorable="d"
+      d:DesignHeight="1800"
+      d:DesignWidth="1000"
+      ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
+      ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+      d:DataContext="{d:DesignInstance Type=learningPathPage:LearningPathViewModel}"
+      Title="LearningPathPage">
+    <Page.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <converters:BoolInverseConverter x:Key="BoolInverseConverter" />
+    </Page.Resources>
+    <Grid Margin="42,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <!-- 顶部标题栏 -->
+        <Grid Grid.Row="0" Margin="0,0,0,24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <ui:SymbolIcon Symbol="Target24"
+                               FontSize="24"
+                               Foreground="#2196F3"
+                               Margin="0,0,12,0" />
+                <ui:TextBlock Text="AI 个性化学习路径报告"
+                              FontSize="24"
+                              FontWeight="Bold" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <ui:Button Content="生成"
+                           Icon="{ui:SymbolIcon Target24}"
+                           Margin="0,0,8,0"
+                           IsEnabled="{Binding IsGenerating, Converter={StaticResource BoolInverseConverter}}"
+                           Command="{Binding GenerateReportCommand}" />
+
+                <ui:Button Content="在浏览器中查看"
+                           Icon="{ui:SymbolIcon Open24}"
+                           Margin="0,0,8,0"
+                           Appearance="Primary"
+                           IsEnabled="{Binding HasHtmlReport}"
+                           Command="{Binding OpenInBrowserCommand}" />
+                <ui:Button Content="保存 Markdown 报告"
+                           Icon="{ui:SymbolIcon Save24}"
+                           Margin="0,0,8,0"
+                           Appearance="Success"
+                           IsEnabled="{Binding HasHtmlReport}"
+                           Command="{Binding SaveMarkdownReportCommand}" />
+                <ui:Button Content="保存 Html 报告"
+                           Icon="{ui:SymbolIcon Save24}"
+                           Appearance="Success"
+                           IsEnabled="{Binding HasHtmlReport}"
+                           Command="{Binding SaveHtmlReportCommand}" />
+            </StackPanel>
+        </Grid>
+        <ui:DynamicScrollViewer Grid.Row="1" MinHeight="300"
+                                Visibility="{Binding IsGenerating, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=True}">
+            <!-- 报告内容 -->
+            <ui:Border Padding="20"
+                       CornerRadius="12"
+                       Background="{DynamicResource ControlFillColorDefaultBrush}"
+                       BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                       BorderThickness="1">
+                <ui:TextBlock Text="{Binding ReportPreview}"
+                              TextWrapping="Wrap" FontSize="16" />
+            </ui:Border>
+        </ui:DynamicScrollViewer>
+
+        <!-- Loading -->
+        <controls:LoadingBox Grid.Row="1" IsActive="{Binding IsGenerating}"
+                             LoadingMessage="正在生成个性化学习路径报告..." />
+    </Grid>
+</Page>

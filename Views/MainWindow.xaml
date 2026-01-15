@@ -11,7 +11,8 @@
                  xmlns:settingPage="clr-namespace:AI_Interviewer.Views.Pages.SettingPage"
                  xmlns:userInfoPage="clr-namespace:AI_Interviewer.Views.Pages.UserInfoPage"
                  xmlns:interviewPage="clr-namespace:AI_Interviewer.Views.Pages.InterviewPage"
-                 xmlns:InterviewResultAnalysisPage="clr-namespace:AI_Interviewer.Views.Pages.InterviewResultAnalysisPage"
+                 xmlns:interviewResultAnalysisPage="clr-namespace:AI_Interviewer.Views.Pages.InterviewResultAnalysisPage"
+                 xmlns:learningPathPage="clr-namespace:AI_Interviewer.Views.Pages.LearningPathPage"
                  ExtendsContentIntoTitleBar="True"
                  mc:Ignorable="d"
                  d:DesignHeight="2550"
@@ -93,9 +94,18 @@
                 <!-- 面试结果分析页 -->
                 <ui:NavigationViewItem Content="面试结果分析"
                                        NavigationCacheMode="Enabled"
-                                       TargetPageType="{x:Type InterviewResultAnalysisPage:InterviewResultAnalysisPage}">
+                                       TargetPageType="{x:Type interviewResultAnalysisPage:InterviewResultAnalysisPage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="AppsList24" Filled="True" Height="20" Width="20" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
+                <!-- 个人学习路径页 -->
+                <ui:NavigationViewItem Content="个人学习路径"
+                                       NavigationCacheMode="Enabled"
+                                       TargetPageType="{x:Type learningPathPage:LearningPathPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="ArrowTrendingLines24" Filled="True" Height="20" Width="20" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
 

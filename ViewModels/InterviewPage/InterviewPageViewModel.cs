@@ -14,10 +14,9 @@ using AI_Interviewer.Services.IServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Serilog;
+using Wpf.Ui;
 using Wpf.Ui.Controls;
 using ErrorEventArgs = AI_Interviewer.Models.ErrorEventArgs;
-using MessageBox = Wpf.Ui.Controls.MessageBox;
-using MessageBoxResult = Wpf.Ui.Controls.MessageBoxResult;
 
 namespace AI_Interviewer.ViewModels.InterviewPage;
 
@@ -49,11 +48,14 @@ public partial class InterviewPageViewModel : ObservableObject {
     // 面试回答保存服务
     private readonly IInterviewAnswerSaveService _interviewAnswerSaveService;
 
+    // 内容对话框服务
+    private readonly IContentDialogService _contentDialogService;
+
     public InterviewPageViewModel(IPreferencesService preferencesService, ILogger logger,
         SnackbarServiceHelper snackbarService, IAudioRecorderService audioRecorderService,
         ISpeechRecognitionService speechRecognitionService, IInterviewAnswerSaveService interviewAnswerSaveService,
         ICameraRecorderService cameraRecorderService, IEmotionAnalysisService emotionAnalysisService,
-        IInterviewQuestionService interviewQuestionService) {
+        IInterviewQuestionService interviewQuestionService, IContentDialogService contentDialogService) {
         _preferencesService = preferencesService;
         _logger = logger;
         _snackbarService = snackbarService;
@@ -63,6 +65,7 @@ public partial class InterviewPageViewModel : ObservableObject {
         _cameraRecorderService = cameraRecorderService;
         _emotionAnalysisService = emotionAnalysisService;
         _interviewQuestionService = interviewQuestionService;
+        _contentDialogService = contentDialogService;
         Init();
         CustomQuestions.ListChanged += (_, _) => {
             OnPropertyChanged(nameof(HasCustomQuestions));
@@ -494,25 +497,31 @@ public partial class InterviewPageViewModel : ObservableObject {
     }
 
     private async Task InterviewStop(bool needConfirm) {
-        var result = needConfirm ? MessageBoxResult.None : MessageBoxResult.Primary;
+        var result = ContentDialogResult.Primary;
         if (needConfirm) {
-            var dialog = new MessageBox {
+            result = await _contentDialogService.ShowAsync(new ContentDialog {
                 Title = "是否要保存本次面试回答？",
                 Content = "保存后可以查看历史面试记录",
                 PrimaryButtonIcon = new SymbolIcon(SymbolRegular.Save24),
-                PrimaryButtonAppearance = ControlAppearance.Danger,
-                PrimaryButtonText = "不保存",
-                CloseButtonIcon = new SymbolIcon(SymbolRegular.Dismiss12),
-                CloseButtonText = "保存",
-                CloseButtonAppearance = ControlAppearance.Success
-            };
-            result = await dialog.ShowDialogAsync();
+                PrimaryButtonAppearance = ControlAppearance.Success,
+                PrimaryButtonText = "保存",
+                SecondaryButtonIcon = new SymbolIcon(SymbolRegular.Dismiss24),
+                SecondaryButtonText = "不保存",
+                SecondaryButtonAppearance = ControlAppearance.Danger,
+                CloseButtonText = "取消退出"
+            }, CancellationToken.None);
         }
 
-        if (result == MessageBoxResult.Primary) {
-            _interviewAnswerSaveService.DeleteAnswer(_interviewName);
-        } else {
-            SaveAnswer();
+        switch (result) {
+            case ContentDialogResult.Primary:
+                SaveAnswer();
+                break;
+            case ContentDialogResult.Secondary:
+                _interviewAnswerSaveService.DeleteAnswer(_interviewName);
+                break;
+            case ContentDialogResult.None:
+            default:
+                return;
         }
 
         CurrentQuestionAnswer = string.Empty;

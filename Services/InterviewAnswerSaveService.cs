@@ -15,7 +15,8 @@ namespace AI_Interviewer.Services;
 public class InterviewAnswerSaveService : IInterviewAnswerSaveService {
     private static string FolderPath => Path.Combine(GlobalSettings.AppDataDirectory, "InterviewAnswer");
 
-    public void SaveAnswer(string name, List<Question> qAndA, EmotionSummary emotionSummary, Resume resume) {
+    public void SaveAnswer(string name, List<Question> qAndA, EmotionSummary emotionSummary, Resume resume,
+        InterviewAnalysisResult? interviewAnalysisResult = null) {
         if (string.IsNullOrWhiteSpace(name)) {
             throw new ArgumentException("name cannot be empty.", nameof(name));
         }
@@ -43,8 +44,20 @@ public class InterviewAnswerSaveService : IInterviewAnswerSaveService {
             Resume = resume,
             EmotionSummary = emotionSummary
         };
+        if (interviewAnalysisResult != null) {
+            answer.InterviewAnalysisResult = interviewAnalysisResult;
+            answer.HasResult = true;
+        } else {
+            answer.HasResult = false;
+        }
+
         var json = JsonConvert.SerializeObject(answer, Formatting.Indented);
         File.WriteAllText(path, json);
+    }
+
+    public void SaveAnswer(InterviewAnswer interviewAnswer) {
+        SaveAnswer(interviewAnswer.Name, interviewAnswer.QAndA, interviewAnswer.EmotionSummary, interviewAnswer.Resume,
+            interviewAnswer.InterviewAnalysisResult);
     }
 
     public void DeleteAnswer(string name) {
@@ -101,6 +114,12 @@ public class InterviewAnswerSaveService : IInterviewAnswerSaveService {
             var json = File.ReadAllText(file);
             var answer = JsonConvert.DeserializeObject<InterviewAnswer>(json);
             if (answer != null) {
+                if (string.IsNullOrWhiteSpace(answer.InterviewAnalysisResult.Overall.Summary)) {
+                    answer.HasResult = false;
+                } else {
+                    answer.HasResult = true;
+                }
+
                 result.Add(answer);
             }
         }

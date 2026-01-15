@@ -485,7 +485,7 @@ public partial class InterviewPageViewModel : ObservableObject {
                     return question;
                 }),
                 ..await _interviewQuestionService.GenerateQuestionsAsync(resume, SelectedDifficulty,
-                    InterviewQuestionCount, _cts.Token)
+                    InterviewQuestionCount - CustomQuestions.Count, _cts.Token)
             ];
             CurrentQuestionIndex = 0;
             HasGeneratedQuestion = true;

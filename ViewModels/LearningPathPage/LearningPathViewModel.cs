@@ -19,7 +19,7 @@ namespace AI_Interviewer.ViewModels.LearningPathPage;
 public partial class LearningPathViewModel : ObservableObject {
     [ObservableProperty] private bool _isGenerating;
     [ObservableProperty] private string _reportContent = string.Empty;
-    [ObservableProperty] private string _reportPreview = string.Empty;
+    [ObservableProperty] private string _reportPreview = "暂未生成";
     [ObservableProperty] private string _htmlFilePath = string.Empty;
 
     public bool HasHtmlReport => !string.IsNullOrEmpty(HtmlFilePath);
@@ -61,8 +61,6 @@ public partial class LearningPathViewModel : ObservableObject {
         var apiSecret = _preferencesService.Get("SparkAI/ApiSecret", string.Empty)!;
 
         _learningPathService.Init(appId, apiKey, apiSecret);
-
-        _ = GenerateReport();
     }
 
     [RelayCommand]
